@@ -36,4 +36,6 @@ Masa Aktif ({{MASA_AKTIF}} hari)
 
 *AKUN*
 • .reg
+
+
 `;
