@@ -243,20 +243,19 @@ module.exports = async (Joy, msg, reply) => {
 
 
         // Convert video to animated WebP (maximum 10 seconds)
-
+        
         await exec(ffmpegPath, [
             "-y",
             "-i", input,
             "-t", "10",
             "-an",
             "-vf",
-            "fps=15,scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=0x00000000",
+            "fps=15,scale=512:512:force_original_aspect_ratio=decrease:force_divisible_by=2,setsar=1",
             "-c:v", "libwebp",
             "-loop", "0",
             "-quality", "60",
             video
         ]);
-
 
         // Read generated files
 
