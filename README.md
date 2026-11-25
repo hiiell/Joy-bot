@@ -74,8 +74,8 @@ JOYBOT membagi fungsionalitasnya ke dalam beberapa kategori utama dengan pemisah
 
 1. **Clone repository** (atau unduh source code projek):
    ```bash
-   git clone https://github.com/username/joybot.git
-   cd joybot
+   git clone https://github.com/hilalunivers08/Joy-bot
+   cd Joy-bot
    ```
 
 2. **Instal seluruh dependencies:**
@@ -94,9 +94,8 @@ JOYBOT menggunakan file **`api.env`** (dimuat melalui `dotenv`) untuk menyimpan 
 
 ```env
 # Sesuaikan nama dan nilai variabel berdasarkan konfigurasi di api.env
-VARIABLE_1=isi_nilai_konfigurasi_1
-VARIABLE_2=isi_nilai_konfigurasi_2
-VARIABLE_3=isi_nilai_konfigurasi_3
+NAMA_VARIABEL1=API_KEY1
+NAMA_VARIABEL2=API_KEY2
 ```
 
 *(Periksa file `api.env` atau pemanggilan `process.env` pada source code untuk memastikan nama kunci variabel yang tepat sebelum menjalankan bot).*
