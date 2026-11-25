@@ -5,6 +5,23 @@ const { downloadMediaMessage } = require("baileys");
 module.exports = async (Joy, msg, reply) => {
     const sender = msg.key.remoteJid;
 
+    // Reaction helper
+    const react = async (emoji) => {
+        try {
+            await Joy.sendMessage(sender, {
+                react: {
+                    text: emoji,
+                    key: msg.key
+                }
+            });
+        } catch (error) {
+            console.error(
+                "Reaction error:",
+                error.message
+            );
+        }
+    };
+
     try {
         const quoted = msg.message.extendedTextMessage?.contextInfo;
 
@@ -35,10 +52,11 @@ module.exports = async (Joy, msg, reply) => {
         }
 
         if (!stickerMessage) {
-            return reply("⚠️ *Balas sticker dengan .tomed*");
+            return reply("*Balas sticker dengan .tomed*");
         }
 
-        await reply("☕ *Sedang mengubah sticker...*");
+        // Start processing
+        await react("⏳");
 
         const buffer = await downloadMediaMessage(
             targetMessage,
@@ -68,6 +86,7 @@ module.exports = async (Joy, msg, reply) => {
                 },
                 { quoted: msg }
             );
+
         } else {
             const imageBuffer = await sharp(buffer)
                 .png()
@@ -83,8 +102,14 @@ module.exports = async (Joy, msg, reply) => {
             );
         }
 
+        // Processing completed
+        await react("");
+
     } catch (error) {
         console.error("Error To Media:", error);
+
+        // Processing failed
+        await react("❌");
 
         await reply(
             "⚠️ *Gagal mengubah sticker. Pastikan kamu membalas sticker yang valid.*"
