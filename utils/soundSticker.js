@@ -138,7 +138,7 @@ async function sendSoundStickerMessage(
 
     if (!stickerMessage || !audioMessage) {
         throw new Error(
-            "Baileys gagal menyiapkan media stiker atau audio."
+            "gagal menyiapkan media stiker atau audio."
         );
     }
 

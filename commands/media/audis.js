@@ -211,10 +211,12 @@ module.exports = async (Joy, msg, reply) => {
                 "-vn",
                 "-t", "5",
                 "-c:a", "libopus",
-                "-b:a", "64k",
+                "-b:a", "48k",
                 "-ar", "48000",
                 "-ac", "1",
                 "-application", "voip",
+                "-avoid_negative_ts", "make_zero",
+                "-map_metadata", "-1",
                 "-f", "ogg",
                 audio
             ]);
