@@ -43,5 +43,4 @@ Masa Aktif ({{MASA_AKTIF}} hari)
 
 𝖢𝖔𝔫𝓽𝚊𝖈𝔱 ｍ𝓮
 .author
-
 `;
