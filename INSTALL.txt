@@ -1,0 +1,46 @@
+JOYBOT — PATCH SOUND STICKER (.audis)
+=====================================
+
+Isi paket:
+- index.js                  (updated from the file you supplied)
+- utils/soundSticker.js     (new Sound Sticker protobuf/media sender)
+- commands/media/audis.js   (updated command implementation)
+
+Syarat:
+- Baileys 6.7.17 (seperti package.json JOYBOT yang dibagikan)
+- ffmpeg-static sudah terpasang
+- Pino sudah terpasang
+
+Pemasangan:
+1. Matikan JOYBOT.
+2. Backup project terlebih dahulu.
+3. Salin index.js dari paket ini untuk menggantikan index.js di root project.
+4. Salin utils/soundSticker.js ke folder utils/.
+5. Salin commands/media/audis.js ke folder commands/media/.
+6. messageHandler.js milikmu sudah mengimpor audis.js dan mengenali "audis".
+   Pastikan blok command tetap:
+       case "audis":
+       case "soundsticker":
+           await audis(Joy, msg, reply);
+           break;
+7. Jalankan:
+       npm start
+
+Cara uji:
+- Kirim atau reply sebuah video yang memiliki suara dengan .audis.
+- Visual sticker dikonversi sebagai animated WebP, maksimal 10 detik.
+- Audio diambil maksimal 5 detik, sebagai OGG/Opus mono.
+- Bot mengirim satu StickerMessage dengan audioMessage tertanam.
+
+Catatan teknis:
+- Baileys 6.7.17 belum mendefinisikan field StickerMessage.audioMessage (field 26)
+  pada protobuf bawaannya. utils/soundSticker.js menambal encoder saat runtime.
+- Audio dan stiker masing-masing diunggah menggunakan waUploadToServer Baileys.
+  Keduanya kemudian dikirim sebagai satu StickerMessage melalui relayMessage.
+- Patch ini belum bisa diuji terhadap akun WhatsApp milikmu dari lingkungan ini.
+  Kompatibilitas akhir bergantung pada dukungan Sound Sticker di WhatsApp penerima.
+- Properti "pack" bukan field resmi untuk sendMessage pada Baileys 6.7.17.
+  Nama pack/publisher memerlukan metadata EXIF WebP terpisah; patch ini fokus
+  pada audio tertanam.
+- Karena menyentuh protobuf internal, uji terlebih dahulu dengan video pendek.
+  Jangan hapus backup sampai pengujian berhasil.

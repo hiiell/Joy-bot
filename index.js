@@ -26,6 +26,7 @@ const readline = require("readline");
 
 const messageHandler = require("./handlers/messageHandler");
 const botConfig = require("./config/bot");
+const sendSoundStickerMessage = require("./utils/soundSticker");
 
 const usePairingCode = true;
 
@@ -889,6 +890,39 @@ async function connectToWhatsApp() {
 
     Joy.sentMessages = new Set();
     Joy.sentMessageKeys = new Map();
+
+    // Native Sound Sticker sender.
+    // Uses Baileys' own media upload + relay pipeline and caches the result
+    // so message replies and retry requests continue to work.
+    Joy.sendSoundSticker = async (
+      jid,
+      stickerBuffer,
+      audioBuffer,
+      options = {}
+    ) => {
+      const result = await sendSoundStickerMessage(
+        Joy,
+        jid,
+        stickerBuffer,
+        audioBuffer,
+        options
+      );
+
+      if (result?.key?.id) {
+        const chatId = result.key.remoteJid || jid;
+        const trackingKey = `${chatId}:${result.key.id}`;
+
+        Joy.sentMessages.add(trackingKey);
+        Joy.sentMessageKeys.set(trackingKey, result.key);
+
+        rememberSentMessage(
+          trackingKey,
+          result.message
+        );
+      }
+
+      return result;
+    };
 
 
     // WAJIB dipasang sebelum requestPairingCode agar creds

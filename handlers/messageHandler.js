@@ -25,7 +25,7 @@ const tomed = require("../commands/media/tomed");
 const shop = require("../commands/economy/shop");
 const inventory = require("../commands/economy/inventory");
 const leaderboard = require("../database/leaderboard");
-const audsti = require("../commands/media/audsti");
+const audis = require("../commands/media/audis");
 
 
 async function resolveSenderJid(Joy, msg) {
@@ -622,16 +622,17 @@ async function messageHandler(Joy, m) {
         case "uptime":
         case "jid":
         case "dlmsg":
-        case "aaeiilnndraatt":
+          case "aaeiilnndraatt":
 
             await ownerCommands(
-                Joy,
-                msg,
-                reply,
-                args,
-                command,
-                { isAuthor }
+              Joy,
+              msg,
+              reply,
+              args,
+              command,
+              { isAuthor }
             );
+            break;
 
         // AUTHOR
         case "author":
@@ -646,7 +647,7 @@ async function messageHandler(Joy, m) {
         // Audio sticker
         case "soundsticker":
         case "audis":
-            await audsti(Joy, msg, reply);
+            await audis(Joy, msg, reply);
             break;
     }
     } finally {
