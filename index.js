@@ -1,13 +1,4 @@
-/* =========================================================
-   JOY CONSOLE - LOGGING INTEGRATION
-   ---------------------------------------------------------
-   Seluruh output console.* Joybot (termasuk filter pesan sesi
-   Baileys) kini ditangani oleh Joy Console:
-   - disimpan ke file log + buffer memori
-   - WARNING/ERROR tampil di dashboard
-   - pesan masuk tidak membanjiri dashboard utama
-   Implementasi logging ada di console/logger.js.
-========================================================= */
+// Joy Console logging integration
 
 const JoyConsole = require("./console");
 
@@ -33,53 +24,22 @@ const chalk = require("chalk");
 const readline = require("readline");
 
 
-// const originalConsoleLog = console.log.bind(console);
-
-// console.log = (...args) => {
-//     const message =
-//         typeof args[0] === "string" ? args[0] : "";
-
-//     const ignoredLogs = [
-//         "Closing session:",
-//         "Closing stale open session",
-//         "Closing open session in favor of incoming prekey bundle",
-//         "Removing old closed session:"
-//     ];
-
-//     if (
-//         ignoredLogs.some((prefix) =>
-//             message.startsWith(prefix)
-//         )
-//     ) {
-//         return;
-//     }
-
-//     originalConsoleLog(...args);
-// };
-
 const messageHandler = require("./handlers/messageHandler");
+const botConfig = require("./config/bot");
 
 const usePairingCode = true;
 
 
-/* =========================================================
-   JOYBOT CONFIG
-========================================================= */
+// Bot configuration
 
-const BOT_NAME = "JOYBOT";
+const BOT_NAME = botConfig.name;
 const BOT_VERSION = "v1.0.0";
 const AUTHOR = "Hilal";
-const AUTHOR_NUMBER = "222079890813069";
+const AUTHOR_NUMBER = botConfig.authorNumber;
 
 const PROJECT_ROOT = __dirname;
 
-/* =========================================================
-   WHATSAPP CONNECTION STATE
-   ---------------------------------------------------------
-   Hanya boleh ada SATU socket aktif dan SATU proses yang
-   memakai folder auth. Ini mencegah state Signal saling
-   menimpa saat reconnect / restart.
-========================================================= */
+// WhatsApp connection state
 
 const AUTH_DIR = path.join(PROJECT_ROOT, "sessions");
 const INSTANCE_LOCK = path.join(AUTH_DIR, ".joybot.lock");
@@ -99,17 +59,7 @@ let instanceLockPath = null;
 // Hanya isi pesan terakhir yang disimpan, bukan kredensial.
 const sentMessageCache = new Map();
 
-const SPINNER = [
-  "◐",
-  "◓",
-  "◑",
-  "◒"
-];
-
-
-/* =========================================================
-   UTILITY
-========================================================= */
+// Utility
 
 function sleep(ms) {
   return new Promise((resolve) => {
@@ -118,19 +68,9 @@ function sleep(ms) {
 }
 
 
-async function typeText(text, delay = 20) {
-  for (const char of text) {
-    process.stdout.write(char);
-    await sleep(delay);
-  }
-
-  process.stdout.write("\n");
-}
 
 
-/* =========================================================
-   PACKAGE INFORMATION
-========================================================= */
+// Package information
 
 function getPackageCount() {
   try {
@@ -169,9 +109,7 @@ function getPackageCount() {
 }
 
 
-/* =========================================================
-   GET INSTALLED PACKAGE VERSION
-========================================================= */
+// Get installed package version
 
 function getPackageVersion(packageName) {
   try {
@@ -201,9 +139,7 @@ function getPackageVersion(packageName) {
 }
 
 
-/* =========================================================
-   FIND JAVASCRIPT FILES
-========================================================= */
+// Find javascript files
 
 function getJSFiles(directory) {
   let files = [];
@@ -252,9 +188,7 @@ function getJSFiles(directory) {
 }
 
 
-/* =========================================================
-   COUNT LINES OF CODE
-========================================================= */
+// Count lines of code
 
 function countCodeLines(filePath) {
   try {
@@ -318,9 +252,7 @@ function countCodeLines(filePath) {
 }
 
 
-/* =========================================================
-   SOURCE STATISTICS
-========================================================= */
+// Source statistics
 
 function getSourceStats() {
   const files = getJSFiles(
@@ -342,9 +274,7 @@ function getSourceStats() {
 }
 
 
-/* =========================================================
-   MEMORY
-========================================================= */
+// Memory
 
 function getMemoryUsage() {
   const memory =
@@ -356,17 +286,17 @@ function getMemoryUsage() {
 }
 
 
-/* =========================================================
-   FOLDER STRUCTURE
-========================================================= */
+// Folder structure
 
 function getProjectFolders() {
 
   const folders = [
     "commands",
-    "database",
     "config",
+    "console",
+    "database",
     "handlers",
+    "scrape",
     "utils"
   ];
 
@@ -400,9 +330,7 @@ function getProjectFolders() {
 }
 
 
-/* =========================================================
-   SYSTEM INFORMATION
-========================================================= */
+// System information
 
 function getSystemInfo() {
 
@@ -443,9 +371,7 @@ function getSystemInfo() {
 }
 
 
-/* =========================================================
-   JOY ASCII LOGO
-========================================================= */
+// Joy ascii logo
 
 const LOGO_ART = [
 
@@ -502,9 +428,7 @@ const LOGO_ART = [
 ];
 
 
-/* =========================================================
-   FASTFETCH BANNER
-========================================================= */
+// Fastfetch banner
 
 async function renderLogoWithText() {
 
@@ -655,136 +579,7 @@ async function renderLogoWithText() {
 }
 
 
-/* =========================================================
-   LOADING SPINNER
-========================================================= */
-
-async function loadingStep(
-  text
-) {
-
-  for (
-    let i = 0;
-    i < 8;
-    i++
-  ) {
-
-    const spinner =
-      SPINNER[
-        i % SPINNER.length
-      ];
-
-    process.stdout.write(
-      `\r${chalk.cyan(spinner)} ${chalk.white(text)}`
-    );
-
-    await sleep(45);
-  }
-
-  process.stdout.write(
-    `\r${chalk.green("✓")} ${chalk.white(text)}\n`
-  );
-}
-
-
-/* =========================================================
-   SYSTEM STATUS
-========================================================= */
-
-// async function showSystemStatus() {
-
-//   console.log(
-//     chalk.cyan(
-//       "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-//     )
-//   );
-
-//   await sleep(150);
-
-
-//   const systems = [
-
-//     "Initializing...",
-
-//     "Loading configuration...",
-
-//     "Loading command handler...",
-
-//     "Loading database...",
-
-//     "Loading AI engine..."
-
-//   ];
-
-
-//   for (
-//     const system of systems
-//   ) {
-
-//     await loadingStep(
-//       system
-//     );
-
-//     await sleep(80);
-//   }
-
-
-//   console.log("");
-
-
-//   const modules = [
-
-//     "AI SYSTEM",
-
-//     "GAME SYSTEM",
-
-//     "MEDIA SYSTEM",
-
-//     "DOWNLOADER"
-
-//   ];
-
-
-//   for (
-//     const module of modules
-//   ) {
-
-//     await typeText(
-//       chalk.green(
-//         `  [ ✓ ] ${module}`
-//       ),
-//       10
-//     );
-
-//     await sleep(20);
-//   }
-
-
-//   console.log(
-//     chalk.cyan(
-//       "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-//     )
-//   );
-
-
-//   await sleep(100);
-
-
-//   await typeText(
-//     chalk.yellow(
-//       "  [ WHATSAPP ] Connecting..."
-//     ),
-//     20
-//   );
-
-
-//   await sleep(100);
-// }
-
-
-/* =========================================================
-   SHOW BANNER
-========================================================= */
+// Start the bot
 
 async function showBanner() {
     // Ambil lock SEBELUM menyentuh folder auth. Jika terminal lama
@@ -816,9 +611,7 @@ showBanner().catch((error) => {
 });
 
 
-/* =========================================================
-   PHONE NUMBER INPUT
-========================================================= */
+// Phone number input
 
 async function question(prompt) {
 
@@ -851,9 +644,7 @@ async function question(prompt) {
 }
 
 
-/* =========================================================
-   WHATSAPP CONNECTION HELPERS
-========================================================= */
+// Whatsapp connection helpers
 
 function clearReconnectTimer() {
   if (reconnectTimer) {
@@ -1008,9 +799,7 @@ function registerShutdownHandlers() {
 }
 
 
-/* =========================================================
-   WHATSAPP CONNECTION
-========================================================= */
+// Whatsapp connection
 
 async function connectToWhatsApp() {
   if (shuttingDown || connecting) {
@@ -1167,17 +956,11 @@ async function connectToWhatsApp() {
     };
 
 
-    /* =======================================================
-       JOY CONSOLE ATTACH
-       Memberi tahu Joy Console socket yang sedang aktif.
-       TIDAK membuat koneksi WhatsApp baru.
-    ======================================================= */
+    // Joy console attach
 
     JoyConsole.attachSocket(Joy);
 
-    /* =======================================================
-       CONNECTION
-    ======================================================= */
+    // Connection
 
     Joy.ev.on(
       "connection.update",
@@ -1287,9 +1070,7 @@ async function connectToWhatsApp() {
     );
 
 
-  /* =======================================================
-     MESSAGE HANDLER
-  ======================================================= */
+  // Message handler
 
   Joy.ev.on(
     "messages.upsert",
@@ -1313,6 +1094,9 @@ async function connectToWhatsApp() {
       const body =
         msg.message.conversation ||
         msg.message.extendedTextMessage?.text ||
+        msg.message.imageMessage?.caption ||
+        msg.message.videoMessage?.caption ||
+        msg.message.documentMessage?.caption ||
         "";
 
 
@@ -1374,9 +1158,7 @@ async function connectToWhatsApp() {
     connecting = false;
 
 
-    /* =======================================================
-       PAIRING CODE
-    ======================================================= */
+    // Pairing code
 
     if (
       usePairingCode &&
@@ -1442,12 +1224,5 @@ async function connectToWhatsApp() {
 }
 
 
-/* =========================================================
-   START JOYBOT
-========================================================= */
+// Start joybot
 
-// showBanner().then(() => {
-
-//   connectToWhatsApp();
-
-// });

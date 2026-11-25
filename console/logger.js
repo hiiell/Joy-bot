@@ -1,14 +1,4 @@
-/* =========================================================
-   JOY CONSOLE LOGGER
-   ---------------------------------------------------------
-   Tanggung jawab:
-   - Menangkap output console.* Joybot.
-   - Menyimpan log penting ke file persisten + rotasi ukuran.
-   - Menyediakan buffer di memori untuk ditampilkan di console.
-   - Mencatat error terakhir beserta waktu.
-
-   Logger TIDAK bertanggung jawab menggambar dashboard.
-   ========================================================= */
+// Joy console logger
 
 const fs = require("fs");
 const path = require("path");
@@ -56,9 +46,7 @@ let writing = false;
 let currentSize = null;
 let fileLoggingDisabled = false;
 
-/* ---------------------------------------------------------
-   Format & filter
-   --------------------------------------------------------- */
+// Format & filter
 
 function formatArgs(args) {
     try {
@@ -78,9 +66,7 @@ function shouldSuppress(text) {
     );
 }
 
-/* ---------------------------------------------------------
-   Buffer
-   --------------------------------------------------------- */
+// Buffer
 
 function pushEntry(level, text) {
     const now = Date.now();
@@ -115,9 +101,7 @@ function pushEntry(level, text) {
     return entry;
 }
 
-/* ---------------------------------------------------------
-   File (async, dengan rotasi)
-   --------------------------------------------------------- */
+// File (async, dengan rotasi)
 
 function ensureLogDir() {
     try {
@@ -225,9 +209,7 @@ function toFile(entry) {
     );
 }
 
-/* ---------------------------------------------------------
-   API publik
-   --------------------------------------------------------- */
+// API publik
 
 function log(level, message) {
     const safeLevel = Object.prototype.hasOwnProperty.call(

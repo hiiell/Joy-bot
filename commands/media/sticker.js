@@ -1,9 +1,27 @@
+
 const pino = require("pino");
 const sharp = require("sharp");
+const { Sticker } = require("wa-sticker-formatter");
 const { downloadMediaMessage } = require("baileys");
+
+const STICKER_PACK = "JOYBOT";
+const STICKER_AUTHOR = "Hilal";
 
 module.exports = async (Joy, msg, reply) => {
     const sender = msg.key.remoteJid;
+
+    const react = async (emoji) => {
+        try {
+            await Joy.sendMessage(sender, {
+                react: {
+                    text: emoji,
+                    key: msg.key
+                }
+            });
+        } catch (error) {
+            console.error("Reaction error:", error);
+        }
+    };
 
     try {
         const quoted = msg.message.extendedTextMessage?.contextInfo;
@@ -36,11 +54,11 @@ module.exports = async (Joy, msg, reply) => {
 
         if (!imageMessage) {
             return reply(
-                "⚠️ *Kirim gambar dengan caption .sticker atau balas gambar dengan .sticker*"
+                " *Kirim gambar dengan caption .sticker atau balas gambar dengan .sticker*"
             );
         }
 
-        await reply("☕ *Sedang membuat stiker...*");
+        await react("⏳");
 
         const buffer = await downloadMediaMessage(
             targetMessage,
@@ -52,7 +70,7 @@ module.exports = async (Joy, msg, reply) => {
             }
         );
 
-        const stickerBuffer = await sharp(buffer)
+        const imageBuffer = await sharp(buffer)
             .rotate()
             .resize(512, 512, {
                 fit: "contain",
@@ -66,17 +84,25 @@ module.exports = async (Joy, msg, reply) => {
             .webp({ quality: 80 })
             .toBuffer();
 
+        const sticker = new Sticker(imageBuffer, {
+            pack: STICKER_PACK,
+            author: STICKER_AUTHOR,
+            type: "full",
+            quality: 80
+        });
+
+        const stickerBuffer = await sticker.toBuffer();
+
         await Joy.sendMessage(
             sender,
             { sticker: stickerBuffer },
             { quoted: msg }
         );
 
-    } catch (error) {
-        console.error("Error Sticker:", error);
+        await react("");
 
-        await reply(
-            "⚠️ *Gagal membuat stiker. Coba gunakan gambar lain.*"
-        );
+    } catch (error) {
+        console.error("Sticker error:", error);
+        await react("❌");
     }
 };

@@ -1,7 +1,4 @@
-/*
-  Joy AI
-  Provider: Groq API
-*/
+// Joy AI
 
 const path = require('path');
 require('dotenv').config({

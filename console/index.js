@@ -1,14 +1,4 @@
-/* =========================================================
-   JOY CONSOLE - MAIN ORCHESTRATOR
-   ---------------------------------------------------------
-   Menyatukan: logger, stats, group monitor, dashboard, dan
-   command system. Menjalankan frame loop + prompt terminal.
-
-   PENTING:
-   - TIDAK membuat koneksi WhatsApp baru.
-   - Hanya membaca socket & status dari index.js.
-   - Tidak mengganggu pemrosesan pesan.
-   ========================================================= */
+// Joy Console MAIN ORCHESTRATOR
 
 const readline = require("readline");
 
@@ -21,9 +11,7 @@ const commands = require("./commands");
 const activity = require("../database/activity");
 const botConfig = require("../config/bot");
 
-/* ---------------------------------------------------------
-   ANSI helpers
-   --------------------------------------------------------- */
+// ANSI helpers
 
 const ANSI = {
     clear: "\x1b[2J",
@@ -38,9 +26,7 @@ const ANSI = {
 
 const PROMPT = "> ";
 
-/* ---------------------------------------------------------
-   State
-   --------------------------------------------------------- */
+// State
 
 let initialized = false;
 let interactive = false;
@@ -79,9 +65,7 @@ const seenOrder = [];
 // dihitung sebagai aktivitas baru.
 const MAX_RECORD_AGE_SECONDS = 60;
 
-/* ---------------------------------------------------------
-   Utilitas
-   --------------------------------------------------------- */
+// Utilitas
 
 function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -122,9 +106,7 @@ function setNotice(message, ms = 4000) {
     noticeUntil = Date.now() + ms;
 }
 
-/* ---------------------------------------------------------
-   Pembangunan data per view
-   --------------------------------------------------------- */
+// Pembangunan data per view
 
 function collectDashboard() {
     return {
@@ -205,9 +187,7 @@ function buildViewLines(width, height) {
     }
 }
 
-/* ---------------------------------------------------------
-   Frame rendering (differential, anti-flicker)
-   --------------------------------------------------------- */
+// Frame rendering (differential, anti-flicker)
 
 function writeFrame(lines, height, full) {
     const width = getWidth();
@@ -308,9 +288,7 @@ function fullRedraw() {
     renderFrame(true);
 }
 
-/* ---------------------------------------------------------
-   Command context
-   --------------------------------------------------------- */
+// Command context
 
 function resolveGroupByInput(input) {
     const groups = stats.getGroups();
@@ -484,9 +462,7 @@ const ctx = {
     }
 };
 
-/* ---------------------------------------------------------
-   Input handling
-   --------------------------------------------------------- */
+// Input handling
 
 function handleLine(line) {
     const trimmed = String(line || "").trim();
@@ -525,15 +501,7 @@ function handleLine(line) {
     fullRedraw();
 }
 
-/* ---------------------------------------------------------
-   Startup animation
-   ============================================================
-   DASHBOARD SECTION: STARTUP ANIMATION
-   Animasi singkat saat console dibuka. Hanya berjalan di
-   terminal interaktif. Tidak mengganggu koneksi WhatsApp.
-   Nonaktifkan lewat CONFIG.startupAnimation = false.
-   ============================================================
-   --------------------------------------------------------- */
+// Startup animation
 
 async function runStartupAnimation() {
     process.stdout.write(ANSI.clear + ANSI.home);
@@ -556,9 +524,7 @@ async function runStartupAnimation() {
     await sleep(450);
 }
 
-/* ---------------------------------------------------------
-   Lifecycle
-   --------------------------------------------------------- */
+// Lifecycle
 
 function init() {
     if (initialized) return;
@@ -713,9 +679,7 @@ function teardownConsole(exitOnly) {
     );
 }
 
-/* ---------------------------------------------------------
-   Hooks dari index.js
-   --------------------------------------------------------- */
+// Hooks dari index.js
 
 function attachSocket(Joy) {
     stats.setSocket(Joy);
@@ -785,12 +749,7 @@ function getTimestampSeconds(msg) {
     return Number.isFinite(value) ? value : null;
 }
 
-/* ============================================================
-   ACTIVITY TRACKING
-   Dipanggil dari event messages.upsert yang SUDAH ADA di
-   index.js. Menggunakan id pesan yang stabil untuk mencegah
-   penghitungan ganda saat reconnect / pesan diputar ulang.
-   ============================================================ */
+// Activity tracking
 function recordMessage(msg) {
     try {
         if (!msg || !msg.key || !msg.key.id) return;

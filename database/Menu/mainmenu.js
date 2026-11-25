@@ -27,6 +27,7 @@ Masa Aktif ({{MASA_AKTIF}} hari)
 • .s
 • .brat
 • .tomed
+• .auds
 
 *BALANCE*
 • .tf
@@ -40,5 +41,7 @@ Masa Aktif ({{MASA_AKTIF}} hari)
 *AKUN*
 • .reg
 
-@hilalunivers
+𝖢𝖔𝔫𝓽𝚊𝖈𝔱 ｍ𝓮
+.author
+
 `;

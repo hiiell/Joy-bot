@@ -1,12 +1,4 @@
-/* =========================================================
-   JOY CONSOLE - GROUP MONITOR
-   ---------------------------------------------------------
-   Menyimpan buffer pesan terbaru per grup di memori.
-
-   Hanya mengubah tampilan terminal. TIDAK menambah event
-   listener baru pada socket WhatsApp — data dimasukkan oleh
-   console/index.js dari event messages.upsert yang sudah ada.
-   ========================================================= */
+// Joy Console GROUP MONITOR
 
 const MAX_PER_GROUP = 60;
 

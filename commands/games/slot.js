@@ -139,25 +139,19 @@ function parseBet(value) {
 }
 
 function buildGuide() {
-    const bets = BET_OPTIONS
-        .map(amount => `• .777 ${amount}`)
-        .join("\n");
-
     return (
-        "Masukkan nominal\n" +
-        "Contoh : .777 1k\n" +
-        "Nominal Tersedia : 1k, 5k, 10k, 25k, 50k"
+        "Masukkan nominal taruhan.\n" +
+        "Contoh: .777 1k\n\n" +
+        "Nominal tersedia: 1k, 5k, 10k, 25k, dan 50k."
     );
 }
 
 function buildInvalidBet() {
-    const bets = BET_OPTIONS
-        .map(amount => `• .777 ${amount}`)
-        .join("\n");
+    const options = BET_OPTIONS
+        .map(amount => formatRupiah(amount))
+        .join(", ");
 
-    return (
-        "❌ *Nominal taruhan tidak valid.*" 
-    );
+    return `❌ *Nominal tidak valid.* Pilih salah satu: ${options}.`;
 }
 
 function mentionJid(jid) {
@@ -205,12 +199,13 @@ async function handleSpin(Joy, msg, reply, betText) {
 
             if (deduct.reason === "insufficient") {
                 const current = getBalance(playerJid);
-                const saldo = current.success
+                const balance = current.success
                     ? formatRupiah(current.balance)
-                    : formatRupiah(0);
+                    : "tidak tersedia";
 
                 return reply(
-                    "❌ *Saldo kamu tidak mencukupi.*" 
+                    "❌ *Saldo kamu tidak mencukupi.*\n" +
+                    `Saldo saat ini: ${balance}`
                 );
             }
 
@@ -221,25 +216,25 @@ async function handleSpin(Joy, msg, reply, betText) {
         const result = evaluateSpin(symbols);
         const payout = computePayout(bet, result.multiplier);
 
-        let balance = deduct.balance;
-
         if (payout > 0) {
             const reward = adjustBalance(playerJid, payout);
 
-            if (reward.success) {
-                balance = reward.balance;
+            if (!reward.success) {
+                const refund = adjustBalance(playerJid, bet);
+                const refundStatus = refund.success
+                    ? "Taruhan sudah dikembalikan."
+                    : "Hubungi owner untuk pemeriksaan saldo.";
+
+                return reply(
+                    `⚠️ Hadiah gagal ditambahkan. ${refundStatus}`
+                );
             }
         }
-
-        const user = getUser(playerJid);
-        const playerName = user?.name || "Kamu";
 
         const header =
             `👤 Pemain: ${mentionJid(playerJid)}\n` +
             `💸 Taruhan: ${formatRupiah(bet)}\n\n` +
             `🎲 [ ${symbols.join(" | ")} ]\n\n`;
-
-        // const footer = `\n💳 Saldo: ${formatRupiah(balance)}`;
 
         let body;
 
@@ -251,8 +246,8 @@ async function handleSpin(Joy, msg, reply, betText) {
 
             body =
                 `✨ ${result.name}\n` +
-                `💰 Keuntungan: ${formatRupiah(payout)}`
-                //`📈 Keuntungan: ${formatRupiah(profit)}`;
+                `💰 Total pembayaran: ${formatRupiah(payout)}\n` +
+                `📈 Untung bersih: ${formatRupiah(profit)}`;
         }
 
         const text = header + body;

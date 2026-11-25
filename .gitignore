@@ -1,59 +1,37 @@
-# Sesi dan autentikasi WhatsApp
-*sessions/
-*sesi/
+# WhatsApp authentication and local sessions
+sessions/
+sesi/
 auth_info_baileys/
 .wwebjs_auth/
 .wwebjs_cache/
+backups/
 
-# File rahasia dan API key
+# Secrets
+api.env
 .env
 .env.*
-!.env.example
-api.env
 *.env
 
 # Dependencies
 node_modules/
 
-# Data pengguna dan saldo
-database/users.json
-
-# Log
-*.log
-logs/
-npm-debug.log*
-
-# File sementara dan hasil generate
-folder-tree.txt
-coverage/
-dist/
-tmp/
-temp/
-
-# Sistem operasi
-.DS_Store
-Thumbs.db
-Desktop.ini
-
-# Editor
-.vscode/
-
-# Sesi WhatsApp
-sessions/
-
-# Data runtime
+# Runtime data
 database/users.json
 database/activity.json
 utils/tokenStats.json
 
-# File sementara
+# Logs and temporary files
+logs/
+*.log
+npm-debug.log*
+coverage/
+dist/
+tmp/
+temp/
 folder-tree.txt
 
-# Cadangan auth lokal (berisi creds, jangan pernah di-commit)
-backups/
-# spotify profiles (automation)
-.spotify-profile/
-Brave-Browser-Spotify-Automation/
-.brave-spotify-automation/
-.spotify-cdp-profile/
-spotify-profile/
+# Operating system and editor files
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/

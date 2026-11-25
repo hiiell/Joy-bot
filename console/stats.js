@@ -1,13 +1,4 @@
-/* =========================================================
-   JOY CONSOLE - STATISTICS COLLECTOR
-   ---------------------------------------------------------
-   Mengumpulkan data NYATA dari proses Node.js, database
-   pengguna, dan database aktivitas.
-
-   Tidak ada angka yang dikarang. Jika data belum tersedia,
-   nilai dikembalikan sebagai null dan dashboard menampilkan
-   "N/A" atau "UNKNOWN".
-   ========================================================= */
+// Joy Console STATISTICS COLLECTOR
 
 const fs = require("fs");
 const os = require("os");
@@ -37,9 +28,7 @@ let lastCpuTime = Date.now();
 const groupNameCache = new Map();
 const groupNameInFlight = new Set();
 
-/* ---------------------------------------------------------
-   Format helper
-   --------------------------------------------------------- */
+// Format helper
 
 function formatBytes(bytes) {
     const value = Number(bytes) || 0;
@@ -108,9 +97,7 @@ function within24h(iso) {
     return Date.now() - time <= 24 * 60 * 60 * 1000;
 }
 
-/* ---------------------------------------------------------
-   Status dari index.js
-   --------------------------------------------------------- */
+// Status dari index.js
 
 function setConnection(status) {
     state.connection = status || "UNKNOWN";
@@ -132,9 +119,7 @@ function getSocket() {
     return state.socket;
 }
 
-/* ---------------------------------------------------------
-   CPU proses (akurat untuk proses Node.js)
-   --------------------------------------------------------- */
+// CPU proses (akurat untuk proses Node.js)
 
 function getCpuPercent() {
     const now = Date.now();
@@ -156,9 +141,7 @@ function getCpuPercent() {
     return Math.max(0, Math.min(999, percent));
 }
 
-/* ---------------------------------------------------------
-   Database pengguna
-   --------------------------------------------------------- */
+// Database pengguna
 
 function readUserDatabase() {
     try {
@@ -186,9 +169,7 @@ function readUserDatabase() {
     }
 }
 
-/* ---------------------------------------------------------
-   Statistik sistem
-   --------------------------------------------------------- */
+// Statistik sistem
 
 function getSystemStats() {
     const memory = process.memoryUsage();
@@ -223,9 +204,7 @@ function getSystemStats() {
     };
 }
 
-/* ---------------------------------------------------------
-   Statistik aktivitas (24 jam terakhir)
-   --------------------------------------------------------- */
+// Statistik aktivitas (24 jam terakhir)
 
 function getActivityStats() {
     const snapshot = activity.getSnapshot();
@@ -261,9 +240,7 @@ function getActivityStats() {
     };
 }
 
-/* ---------------------------------------------------------
-   Status layanan
-   --------------------------------------------------------- */
+// Status layanan
 
 function getServiceStatus() {
     const activityStatus = activity.getStatus();
@@ -304,9 +281,7 @@ function getServiceStatus() {
     return services;
 }
 
-/* ---------------------------------------------------------
-   Daftar pengguna (gabungan users.json + aktivitas)
-   --------------------------------------------------------- */
+// Daftar pengguna (gabungan users.json + aktivitas)
 
 function getUsers(query = "") {
     const userDb = readUserDatabase();
@@ -366,9 +341,7 @@ function getUsers(query = "") {
     return list;
 }
 
-/* ---------------------------------------------------------
-   Daftar grup
-   --------------------------------------------------------- */
+// Daftar grup
 
 function getGroups() {
     const snapshot = activity.getSnapshot();

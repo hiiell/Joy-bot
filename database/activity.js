@@ -1,20 +1,4 @@
-/* =========================================================
-   JOYBOT ACTIVITY DATABASE
-   ---------------------------------------------------------
-   Pencatatan aktivitas pengguna & grup yang PERSISTEN.
-
-   File data: database/activity.json  (diabaikan Git)
-   - users  : aktivitas per pengguna
-   - groups : jumlah pesan per grup
-   - totals : akumulasi pesan sejak 'since'
-
-   Catatan penting:
-   - Modul ini TIDAK pernah menimpa file dengan data kosong.
-     Jika file rusak, pencatatan disk dinonaktifkan sementara
-     dan data lama dibiarkan utuh.
-   - Penulisan ke disk dibatasi (debounce) lewat saveInterval
-     agar tidak menghambat pemrosesan pesan WhatsApp.
-   ========================================================= */
+// Joybot ACTIVITY DATABASE
 
 const fs = require("fs");
 const path = require("path");
@@ -147,9 +131,7 @@ function scheduleSave() {
     }
 }
 
-/* ---------------------------------------------------------
-   Pengguna
-   --------------------------------------------------------- */
+// Pengguna
 
 function registerConsoleUser(id, name) {
     if (!id) return;
@@ -215,9 +197,7 @@ function recordCommand(id, name) {
     scheduleSave();
 }
 
-/* ---------------------------------------------------------
-   Grup
-   --------------------------------------------------------- */
+// Grup
 
 function recordGroupMessage(jid, direction) {
     if (!jid) return;
@@ -294,9 +274,7 @@ function setGroupName(jid, name) {
     scheduleSave();
 }
 
-/* ---------------------------------------------------------
-   Total
-   --------------------------------------------------------- */
+// Total
 
 function recordTotals({ incoming = 0, outgoing = 0 } = {}) {
     data.totals.messages =
@@ -309,9 +287,7 @@ function recordTotals({ incoming = 0, outgoing = 0 } = {}) {
     scheduleSave();
 }
 
-/* ---------------------------------------------------------
-   Akses
-   --------------------------------------------------------- */
+// Akses
 
 function getSnapshot() {
     return data;

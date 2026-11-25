@@ -1,12 +1,4 @@
-/* =========================================================
-   JOY CONSOLE CONFIGURATION
-   ---------------------------------------------------------
-   File ini HANYA untuk mengatur tampilan Joy Console.
-   Jangan menaruh API key, nomor, atau kredensial WhatsApp
-   di sini. Kredensial tetap berada di api.env / sessions.
-
-   Semua nilai di bawah ini punya default yang aman.
-   ========================================================= */
+// Joy console configuration
 
 module.exports = {
 

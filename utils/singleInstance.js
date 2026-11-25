@@ -1,15 +1,4 @@
-/* =========================================================
-   JOYBOT SINGLE INSTANCE LOCK
-   ---------------------------------------------------------
-   useMultiFileAuthState() dari Baileys hanya mengunci file
-   dalam SATU proses. Jika dua proses bot memakai folder
-   sessions yang sama, keduanya bisa saling menimpa state
-   Signal dan memicu error dekripsi.
-
-   Lock ini hanya menjaga agar hanya satu proses Joybot yang
-   boleh menyentuh folder auth. Lock TIDAK menghapus atau
-   mengubah creds/session apa pun.
-   ========================================================= */
+// Joybot SINGLE INSTANCE LOCK
 
 const fs = require("fs");
 const path = require("path");

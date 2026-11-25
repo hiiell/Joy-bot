@@ -1,4 +1,5 @@
 module.exports = {
-    name: "Joy",
-    prefix: "."
+    name: "JOYBOT",
+    prefix: ".",
+    authorNumber: "222079890813069"
 };

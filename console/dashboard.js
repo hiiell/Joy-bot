@@ -1,17 +1,4 @@
-/* =========================================================
-   JOY CONSOLE - DASHBOARD RENDERER
-   ---------------------------------------------------------
-   HANYA berisi kode TAMPILAN (pure render). Tidak ada logika
-   bot, tidak ada akses WhatsApp, tidak ada timer.
-
-   Setiap bagian diberi penanda komentar "DASHBOARD SECTION".
-   Cari komentar tersebut untuk menemukan dan mengubah bagian
-   tertentu tanpa menyentuh sisa program.
-
-   Aman dihapus: menghapus sebuah bagian tampilan TIDAK akan
-   mematikan pemrosesan pesan, database, atau koneksi
-   WhatsApp — dashboard hanya membentuk string untuk dicetak.
-   ========================================================= */
+// Joy Console DASHBOARD RENDERER
 
 const fs = require("fs");
 const path = require("path");
@@ -21,11 +8,7 @@ const CONFIG = require("../config/joyConsole");
 
 const projectRoot = path.join(__dirname, "..");
 
-/* ============================================================
-   DASHBOARD SECTION: THEME (WARNA AKSEN)
-   Edit CONFIG.accentColor di config/joyConsole.js untuk
-   mengganti warna aksen. Bagian ini menerjemahkannya ke chalk.
-   ============================================================ */
+// Dashboard: theme
 
 const theme = {
     accent: chalk[CONFIG.accentColor] || chalk.green,
@@ -56,13 +39,7 @@ function statusColor(status) {
     }
 }
 
-/* ============================================================
-   DASHBOARD SECTION: HEADER AND LOGO
-   ------------------------------------------------------------
-   Logo kucing dimuat dari aset database/console-logo.json.
-   JANGAN mengubah karakter logo. Untuk menyembunyikan logo,
-   set layout.showLogo = false di config/joyConsole.js.
-   ============================================================ */
+// Dashboard: header and logo
 
 let LOGO_LINES = ["[ JOY CONSOLE ]"];
 let LOGO_LOADED = false;
@@ -162,10 +139,7 @@ function buildCompactHeader(width) {
     return lines.map((l) => center(l, width));
 }
 
-/* ============================================================
-   DASHBOARD SECTION: SYSTEM STATISTICS
-   Edit this section to change or remove system statistics.
-   ============================================================ */
+// Dashboard: system statistics
 
 function systemFields(s) {
     // Setiap field aman dihapus satu per satu.
@@ -232,10 +206,7 @@ function buildSystemSection(s) {
     return buildSection("SYSTEM STATISTICS", lines);
 }
 
-/* ============================================================
-   DASHBOARD SECTION: ACTIVITY STATISTICS
-   Statistik 24 jam terakhir. Jika data belum tersedia -> N/A.
-   ============================================================ */
+// Dashboard: activity statistics
 
 function buildActivitySection(a) {
     const lines = [
@@ -298,11 +269,7 @@ function buildActivitySection(a) {
     return buildSection("ACTIVITY STATISTICS", lines);
 }
 
-/* ============================================================
-   DASHBOARD SECTION: GROUP SUMMARY
-   Ringkasan grup yang tercatat. Set layout.showGroupSummary =
-   false di config untuk menyembunyikan.
-   ============================================================ */
+// Dashboard: group summary
 
 function buildGroupSummarySection(groups) {
     const lines = [];
@@ -332,10 +299,7 @@ function buildGroupSummarySection(groups) {
     return buildSection("GROUP SUMMARY", lines);
 }
 
-/* ============================================================
-   DASHBOARD SECTION: LAST ERROR INFO
-   Menampilkan error terakhir yang tercatat oleh logger.
-   ============================================================ */
+// Dashboard: last error
 
 function buildErrorSection(lastError) {
     const lines = [];
@@ -353,11 +317,7 @@ function buildErrorSection(lastError) {
     return buildSection("LAST ERROR", lines);
 }
 
-/* ============================================================
-   DASHBOARD SECTION: LOG PANE (WARNING / ERROR)
-   Menampilkan log WARNING & ERROR terbaru. Set
-   layout.showLogPane = false di config untuk menyembunyikan.
-   ============================================================ */
+// Dashboard: log pane
 
 function buildLogSection(entries) {
     const lines = [];
@@ -384,11 +344,7 @@ function buildLogSection(entries) {
     return buildSection("LOG (WARN/ERROR)", lines);
 }
 
-/* ============================================================
-   DASHBOARD SECTION: FOOTER AND COMMAND PROMPT
-   Teks petunjuk di atas baris prompt. Prompt ">" sendiri
-   dikelola oleh readline di console/index.js.
-   ============================================================ */
+// Dashboard: footer and command prompt
 
 function buildFooter(width) {
     const text =
@@ -399,9 +355,7 @@ function buildFooter(width) {
     return [theme.accent("─".repeat(Math.min(width, 76))), text];
 }
 
-/* ---------------------------------------------------------
-   Helper kecil
-   --------------------------------------------------------- */
+// Helper kecil
 
 function stripAnsi(str) {
     return String(str).replace(/\x1b\[[0-9;]*m/g, "");
@@ -428,12 +382,7 @@ function formatClock(iso) {
     });
 }
 
-/* =========================================================
-   VIEWS
-   ---------------------------------------------------------
-   Setiap view mengembalikan array of string (baris).
-   Tambahkan view baru di sini lalu daftarkan di console/commands.js.
-   ========================================================= */
+// Views
 
 function renderDashboard(data, opts) {
     const { width, height } = opts;

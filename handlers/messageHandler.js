@@ -1,6 +1,7 @@
 const processingCommands = new Set();
 const MAX_MESSAGE_AGE_SECONDS = 20;
 
+const author = require("../commands/system/author");
 const ownerCommands = require("../commands/owner");
 const reg = require("../commands/system/reg");
 const tiktok = require("../commands/downloader/tiktok");
@@ -18,15 +19,13 @@ const tebaklogo = require("../commands/games/tebaklogo");
 const quiz = require("../commands/games/quiz");
 const qumath = require("../commands/games/qumath");
 const slot = require("../commands/games/slot");
-const say = require("../commands/owner/say");
 const sticker = require("../commands/media/sticker");
 const brat = require("../commands/media/brat");
 const tomed = require("../commands/media/tomed");
 const shop = require("../commands/economy/shop");
 const inventory = require("../commands/economy/inventory");
 const leaderboard = require("../database/leaderboard");
-const spotify = require("../commands/system/spotify");
-
+const audsti = require("../commands/media/audsti");
 
 
 async function resolveSenderJid(Joy, msg) {
@@ -85,7 +84,7 @@ async function messageHandler(Joy, m) {
 
     if (!msg?.message) return;
 
-    //ignoer 20 s command
+    // Ignore messages older than the command-processing window.
     const messageTimestamp = Number(msg.messageTimestamp);
 
     if (
@@ -105,7 +104,7 @@ async function messageHandler(Joy, m) {
     const actualSender =
         await resolveSenderJid(Joy, msg);
 
-    const authorNumber = "222079890813069";
+    const authorNumber = bot.authorNumber;
 
     const senderNumber = String(actualSender)
         .split("@")[0]
@@ -117,8 +116,9 @@ async function messageHandler(Joy, m) {
     const body =
         msg.message.conversation ||
         msg.message.extendedTextMessage?.text ||
-        msg.message.imageMessage?.text ||
-        msg.message.videoMessage?.text ||
+        msg.message.imageMessage?.caption ||
+        msg.message.videoMessage?.caption ||
+        msg.message.documentMessage?.caption ||
         "";
 
     const text = body.trim();
@@ -137,7 +137,6 @@ async function messageHandler(Joy, m) {
         msg.message.videoMessage?.contextInfo;
 
     const quotedId = contextInfo?.stanzaId;
-    // 10/9
     const quotedMessage = contextInfo?.quotedMessage;
 
     const quotedText =
@@ -186,8 +185,6 @@ async function messageHandler(Joy, m) {
             );
             return;
         }
-
-        let isGameReply = false;
 
         if (
             Joy.activeQuiz?.[sender] &&
@@ -299,7 +296,7 @@ async function messageHandler(Joy, m) {
 
     processingCommands.add(commandKey);
     try {
-    switch (command) {
+        switch (command) {
 
           // QUOTE
         case "quote":
@@ -617,16 +614,8 @@ async function messageHandler(Joy, m) {
             break;
 
 
+        // Owner commands
         case "say":
-            await say(
-                Joy,
-                msg,
-                reply,
-                args
-            );
-            break;
-
-        // AUTHOR ONLY
         case "restart":
         case "debug":
         case "ping":
@@ -644,17 +633,20 @@ async function messageHandler(Joy, m) {
                 { isAuthor }
             );
 
-        // spotify controller
+        // AUTHOR
+        case "author":
+        case "owner":
+            await author(
+                Joy,
+                msg,
+                reply
+            );
+            break;
 
-        case "play":
-        case "pause":
-        case "next":
-        case "n":
-        case "prev":
-        case "pre":
-        case "previous":
-        case "spotatus":
-            await spotify.execute(Joy, msg, args, command);
+        // Audio sticker
+        case "soundsticker":
+        case "auds":
+            await audsti(Joy, msg, reply);
             break;
     }
     } finally {

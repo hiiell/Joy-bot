@@ -1,12 +1,4 @@
-/* =========================================================
-   JOY CONSOLE - COMMAND SYSTEM
-   ---------------------------------------------------------
-   Perintah terminal KHUSUS Joy Console. Terpisah total dari
-   perintah WhatsApp (yang memakai prefix ".").
-
-   Setiap command punya: name, category, usage, description,
-   dan fungsi run(ctx, args).
-   ========================================================= */
+// Joy Console COMMAND SYSTEM
 
 const registry = [
     // ============================================================
