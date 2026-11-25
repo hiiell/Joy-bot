@@ -129,5 +129,5 @@ Berikut adalah beberapa contoh perintah yang tersedia pada JOYBOT:
 ## 📄 Lisensi & Kredit
 
 * **Lisensi:** Didistribusikan di bawah lisensi [MIT](LICENSE).
-* **Developer:** [Hilal](https://github.com/hilalunivers08)
+* **Developer:** [Hilal](https://github.com/hiiell)
 * **Kontribusi:** [Claude](https://claude.ai/)
