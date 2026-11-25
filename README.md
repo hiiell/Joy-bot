@@ -130,4 +130,4 @@ Berikut adalah beberapa contoh perintah yang tersedia pada JOYBOT:
 
 * **Lisensi:** Didistribusikan di bawah lisensi [MIT](LICENSE).
 * **Developer:** [Hilal](https://github.com/hilalunivers08)
-* **Kredit & Kontribusi:** [Claude](https://claude.ai/)
+* **Kontribusi:** [Claude](https://claude.ai/)
