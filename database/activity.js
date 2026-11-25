@@ -73,7 +73,6 @@ function load() {
             data.totals || {}
         );
     } catch (error) {
-        // File rusak: JANGAN timpa. Nonaktifkan penulisan disk.
         persistenceDisabled = true;
         lastError = error.message;
         data = defaultData();

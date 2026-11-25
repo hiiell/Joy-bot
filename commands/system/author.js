@@ -1,5 +1,5 @@
 const AUTHOR = {
-  name: "Nama Kamu",
+  name: "hilal",
   // number: "6281234567890", // tanpa +
   links: [
     { label: "Instagram", url: "https://instagram.com/hihilalal_" },

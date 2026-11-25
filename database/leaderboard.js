@@ -17,14 +17,12 @@ module.exports = async (Joy, msg, reply, args = [], command = "ldbalance") => {
     const isGroup = msg.key.remoteJid?.endsWith("@g.us");
     const chatId = msg.key.remoteJid;
 
-    // Daftar ID bot / sistem yang tidak boleh masuk ke leaderboard manapun
     const excludeIds = new Set(["255989211242546"]);
     if (Joy?.user?.id) {
         const botPhone = Joy.user.id.split("@")[0].split(":")[0];
         if (botPhone) excludeIds.add(botPhone);
     }
 
-    // Filter anggota jika dieksekusi di dalam grup WhatsApp
     let memberIds = null;
     let groupName = "";
 
@@ -85,9 +83,6 @@ module.exports = async (Joy, msg, reply, args = [], command = "ldbalance") => {
     const medals = ["🥇", "🥈", "🥉"];
     const user = getUser(senderJid);
 
-    // ====================================================================
-    // 1. LEADERBOARD TEBAK GAMBAR (.leadtg)
-    // ====================================================================
     if (isTG) {
         // Ambil top 10 pemenang tebak gambar terbanyak (Joybot dikecualikan).
         // Pemain tanpa skor tidak dipajang di leaderboard.
@@ -127,9 +122,6 @@ module.exports = async (Joy, msg, reply, args = [], command = "ldbalance") => {
         return reply(text);
     }
 
-    // ====================================================================
-    // 2. LEADERBOARD KUIS KHUSUS PER GRUP (.leadquiz / .ldquiz)
-    // ====================================================================
     else if (isQuiz) {
         if (!isGroup) {
             return reply(
@@ -140,8 +132,7 @@ module.exports = async (Joy, msg, reply, args = [], command = "ldbalance") => {
         }
 
         const groupId = msg.key.remoteJid;
-        // Ambil pemenang kuis khusus di grup ini saja (tidak digabung dengan grup lain).
-        // Pemain tanpa skor tidak dipajang di leaderboard.
+
         const topUsers = getTopUsersByQuiz(groupId, memberIds, 10, excludeIds)
             .filter(u => (Number(u.quizScore) || 0) > 0);
         const userRank = getUserQuizRank(senderJid, groupId, memberIds, excludeIds);
@@ -175,9 +166,6 @@ module.exports = async (Joy, msg, reply, args = [], command = "ldbalance") => {
         return reply(text);
     }
 
-    // ====================================================================
-    // 3. LEADERBOARD KUIS MATEMATIKA PER MODE (.leadqumath e/m/h)
-    // ====================================================================
     else if (isQumath) {
         const modeLabels = {
             easy: "EASY",
@@ -241,11 +229,7 @@ module.exports = async (Joy, msg, reply, args = [], command = "ldbalance") => {
         return reply(text);
     }
 
-    // ====================================================================
-    // 4. LEADERBOARD SALDO (.ldbalance)
-    // ====================================================================
     else {
-        // Ambil top 10 pengguna dengan saldo terbanyak (Joybot dikecualikan)
         const topUsers = getTopUsersByBalance(memberIds, 10, excludeIds);
         const userRank = getUserRankByField(senderJid, "balance", memberIds, excludeIds);
 

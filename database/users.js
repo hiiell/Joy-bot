@@ -33,7 +33,6 @@ function getUserId(jid) {
     return id || null;
 }
 
-// Kunci skor per grup. Chat pribadi (bukan @g.us) dihitung sebagai "global".
 function toGroupKey(groupId) {
     const key = String(groupId || "");
     return key.endsWith("@g.us") ? key : "global";
@@ -435,7 +434,6 @@ function consumeItem(jid, itemId, quantity = 1) {
     };
 }
 
-// Skor Tebak Gambar per grup. Format lama (number) hanya berlaku untuk "global".
 function readTebakGambarScore(user, groupKey) {
     const data = user?.tebakGambarWins;
 
@@ -443,7 +441,6 @@ function readTebakGambarScore(user, groupKey) {
         return Number(data[groupKey]) || 0;
     }
 
-    // Format lama: angka global
     if (groupKey === "global") return Number(data) || 0;
 
     return 0;
@@ -700,9 +697,6 @@ function normalizeQumathMode(mode) {
     return null;
 }
 
-// Skor Qumath per grup per mode.
-// Format baru: qumathWins = { [groupKey]: { easy, medium, hard } }
-// Format lama: qumathWins = { easy, medium, hard } (dianggap milik "global")
 function isLegacyQumath(data) {
     return ["easy", "medium", "hard", "expert", "master", "insane"].some(
         m => typeof data?.[m] === "number"
@@ -744,7 +738,6 @@ function recordQumathWin(jid, mode, groupId) {
     if (!store || typeof store !== "object" || Array.isArray(store)) {
         store = {};
     } else if (isLegacyQumath(store)) {
-        // Migrasi format lama ke per grup ("global" dipertahankan)
         const legacy = store;
         store = {};
         const migrated = {};

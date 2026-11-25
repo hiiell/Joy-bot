@@ -20,8 +20,6 @@ module.exports = async (
             cwd: process.cwd(),
             env: {
                 ...process.env,
-                // Beri waktu proses lama menutup socket + melepas
-                // lock auth sebelum proses baru mulai.
                 JOYBOT_RESTART_WAIT: "60000"
             },
             detached: true,
@@ -50,8 +48,6 @@ module.exports = async (
             );
         }
 
-        // Tutup socket dengan rapi sebelum keluar. Proses baru
-        // sudah menunggu lock, jadi tidak ada dua socket aktif.
         try {
             await Joy.stop?.();
         } catch (error) {

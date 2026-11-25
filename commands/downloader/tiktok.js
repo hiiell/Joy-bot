@@ -161,7 +161,6 @@ module.exports = {
                 );
             }
 
-            // Periksa apakah postingan berisi galeri foto
             const photoUrls = findPhotoUrls(data);
 photoUrls.forEach((photoUrl, index) => {
     console.log(
@@ -191,7 +190,6 @@ photoUrls.forEach((photoUrl, index) => {
                 return;
             }
 
-            // Jika bukan galeri foto, proses sebagai video
             const videoUrl = findVideoUrl(data);
 
             if (!videoUrl) {

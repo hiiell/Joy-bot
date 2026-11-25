@@ -54,8 +54,6 @@ function maskAnswer(ans) {
         .join("   ");
 }
 
-// Clue level 1: huruf pertama & terakhir tiap kata
-// Clue level 2: tambah huruf tengah ganjil yang terungkap
 function maskAnswerLevel(ans, level) {
     const text = String(ans || "").trim();
     const words = text.split(/\s+/);
@@ -65,7 +63,7 @@ function maskAnswerLevel(ans, level) {
 
         return w.split("").map((c, i) => {
             if (i === 0 || i === w.length - 1) return c;
-            if (level >= 2 && i % 2 === 1) return c; // ungkap huruf di posisi ganjil
+            if (level >= 2 && i % 2 === 1) return c;
             return "_";
         }).join(" ");
     }).join("   ");
@@ -203,13 +201,10 @@ async function handleAnswer(Joy, msg, reply, answerText, isDirect = false) {
         return true;
     }
 
-    // Jika jawaban salah:
-    // Jika user mengetik pesan biasa (isDirect), jangan balas salah agar tidak mengganggu chat grup
     if (isDirect) {
         return false;
     }
 
-    // Jika user me-reply soal kuis atau memakai command .quiz jawaban, beri feedback salah
     await reply("❌ *Jawaban salah!* Coba lagi.");
     return false;
 }

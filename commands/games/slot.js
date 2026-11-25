@@ -7,7 +7,6 @@ const {
 
 const BET_OPTIONS = [1000, 5000, 10000, 25000, 50000];
 
-// Bobot tiap simbol: semakin tinggi hadiahnya, semakin langka simbolnya.
 const SYMBOLS = [
     { emoji: "7️⃣", weight: 1 },
     { emoji: "💎", weight: 2 },
@@ -58,7 +57,7 @@ const TRIPLE_NAME = {
 const PAIR_MULTIPLIER = 1.5;
 const RESULT_TTL_MS = 60000;
 
-// Mencegah dua putaran berjalan bersamaan untuk pengguna yang sama.
+
 const activeSpins = new Set();
 
 function pickSymbol() {
@@ -112,7 +111,6 @@ function computePayout(bet, multiplier) {
     return Math.round(bet * multiplier);
 }
 
-// Menerima angka biasa (1000) maupun singkatan (1k, 5k, 10k, dst).
 function parseBet(value) {
     const text = String(value ?? "").trim().toLowerCase();
     const match = text.match(/^(\d+(?:[.,]\d+)?)\s*([kmb])?$/);

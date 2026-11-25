@@ -284,7 +284,7 @@ module.exports = {
                 /ffmpeg/i.test(error.message)) {
                 message = 'FFmpeg belum terpasang di server';
             } else if (error.response?.status === 503) {
-                message = '⚠️ Layanan downloader sedang tidak tersedia. Coba lagi nanti.';
+                message = 'Layanan downloader sedang tidak tersedia. Coba lagi nanti.';
             }
 
             await sock.sendMessage(chat, {

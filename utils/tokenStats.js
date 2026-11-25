@@ -3,8 +3,6 @@ const path = require('path');
 
 const statsFile = path.join(__dirname, 'tokenStats.json');
 
-// Harga Groq untuk openai/gpt-oss-20b
-// USD per 1 juta token
 const INPUT_PRICE = 0.075;
 const OUTPUT_PRICE = 0.30;
 

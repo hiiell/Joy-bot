@@ -5,7 +5,6 @@ const {
     recordQumathWin
 } = require("../../database/users");
 
-// Konfigurasi tiap mode kuis matematika
 const MODES = {
     easy: {
         key: "easy",
@@ -66,9 +65,8 @@ function pick(list) {
     return list[Math.floor(Math.random() * list.length)];
 }
 
-// ==================== GENERATOR SOAL ====================
+// easy generator
 
-// Mudah: penjumlahan/pengurangan/perkalian angka kecil
 function generateEasy() {
     const type = pick(["+", "-", "×"]);
 
@@ -89,7 +87,7 @@ function generateEasy() {
     return { soal: `${a} × ${b} = ?`, jawaban: a * b };
 }
 
-// Sedang: angka 2 digit, perkalian & pembagian
+// mediumgenerator
 function generateMedium() {
     const type = pick(["+", "-", "×", "÷"]);
 
@@ -119,8 +117,8 @@ function generateMedium() {
     };
 }
 
-// Sulit: operasi campuran, perkalian besar, persen
-function generateHard() {
+// hard generator
+  function generateHard() {
     const type = pick(["×", "mixed", "triple", "÷", "percent"]);
 
     if (type === "×") {
@@ -166,7 +164,8 @@ function generateHard() {
     };
 }
 
-// Expert: perkalian 2 digit, operasi campuran lebih sulit
+// Expert
+
 function generateExpert() {
     const type = pick(["×", "mixed", "triple", "÷", "percent"]);
     
@@ -213,7 +212,7 @@ function generateExpert() {
     };
 }
 
-// Master: soal lebih kompleks
+// Master
 function generateMaster() {
     const type = pick(["××", "mixed2", "triple2", "pangkat", "÷"]);
     
@@ -265,7 +264,7 @@ function generateMaster() {
     };
 }
 
-// Insane: sangat sulit
+// Insane
 function generateInsane() {
     const type = pick(["big×", "campuran", "kuadrat", "akar", "mixed3"]);
     
@@ -334,7 +333,7 @@ function generateQuestion(mode) {
     return { ...question, mode: key };
 }
 
-// ==================== UTILITAS ====================
+// utiltiy
 
 function parseNumber(input) {
     const cleaned = String(input || "").replace(/[^0-9]/g, "");
@@ -368,7 +367,7 @@ function buildModeGuide() {
     );
 }
 
-// ==================== GAME FLOW ====================
+// game flow
 
 async function startGame(Joy, msg, reply, modeArg) {
     const sender = msg.key.remoteJid;

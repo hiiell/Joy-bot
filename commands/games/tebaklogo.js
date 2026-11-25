@@ -274,8 +274,6 @@ async function handleAnswer(Joy, msg, reply, answerText, isDirect = false) {
         return true;
     }
 
-    // Jika pengguna langsung mengetik di chat, jangan balas salah
-    // agar percakapan biasa tidak terganggu.
     if (isDirect) {
         return false;
     }

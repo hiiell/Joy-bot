@@ -22,7 +22,6 @@ const MENUS = {
     accountmenu
 };
 
-// Hanya menu utama yang menampilkan informasi pengguna.
 const USER_INFO_MENUS = new Set(["menu", "mainmenu"]);
 
 function buildUserInfo(template, user) {
