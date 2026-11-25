@@ -1,30 +1,66 @@
 
 const pino = require("pino");
 const sharp = require("sharp");
-const { Sticker } = require("wa-sticker-formatter");
+const WebP = require("node-webpmux");
 const { downloadMediaMessage } = require("baileys");
 
-const STICKER_PACK = "JOYBOT";
-const STICKER_AUTHOR = "Hilal";
+const PACK_ID = "com.joybot.stickers";
+const PACK_NAME = "with joy, by hilal";
+// const PACK_AUTHOR = "hilal";
+
+const react = async (Joy, sender, msg, emoji) => {
+    try {
+        await Joy.sendMessage(sender, {
+            react: {
+                text: emoji,
+                key: msg.key
+            }
+        });
+    } catch (error) {
+        console.error("Reaction error:", error);
+    }
+};
+
+const addStickerMetadata = async (buffer) => {
+    const metadata = Buffer.from(
+        JSON.stringify({
+            "sticker-pack-id": PACK_ID,
+            "sticker-pack-name": PACK_NAME,
+            // "sticker-pack-publisher": PACK_AUTHOR,
+            emojis: []
+        }),
+        "utf8"
+    );
+
+    const header = Buffer.from([
+        0x49, 0x49, 0x2a, 0x00,
+        0x08, 0x00, 0x00, 0x00,
+        0x01, 0x00, 0x41, 0x57,
+        0x07, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x16, 0x00,
+        0x00, 0x00
+    ]);
+
+    header.writeUInt32LE(metadata.length, 14);
+
+    const image = new WebP.Image();
+
+    await image.load(buffer);
+
+    image.exif = Buffer.concat([
+        header,
+        metadata
+    ]);
+
+    return await image.save(null);
+};
 
 module.exports = async (Joy, msg, reply) => {
     const sender = msg.key.remoteJid;
 
-    const react = async (emoji) => {
-        try {
-            await Joy.sendMessage(sender, {
-                react: {
-                    text: emoji,
-                    key: msg.key
-                }
-            });
-        } catch (error) {
-            console.error("Reaction error:", error);
-        }
-    };
-
     try {
-        const quoted = msg.message.extendedTextMessage?.contextInfo;
+        const quoted =
+            msg.message.extendedTextMessage?.contextInfo;
 
         let targetMessage = msg;
         let imageMessage = msg.message.imageMessage;
@@ -54,11 +90,11 @@ module.exports = async (Joy, msg, reply) => {
 
         if (!imageMessage) {
             return reply(
-                " *Kirim gambar dengan caption .sticker atau balas gambar dengan .sticker*"
+                "*Kirim gambar dengan caption .sticker atau balas gambar dengan .sticker*"
             );
         }
 
-        await react("⏳");
+        await react(Joy, sender, msg, "⏳");
 
         const buffer = await downloadMediaMessage(
             targetMessage,
@@ -70,7 +106,7 @@ module.exports = async (Joy, msg, reply) => {
             }
         );
 
-        const imageBuffer = await sharp(buffer)
+        const webpBuffer = await sharp(buffer)
             .rotate()
             .resize(512, 512, {
                 fit: "contain",
@@ -84,25 +120,23 @@ module.exports = async (Joy, msg, reply) => {
             .webp({ quality: 80 })
             .toBuffer();
 
-        const sticker = new Sticker(imageBuffer, {
-            pack: STICKER_PACK,
-            author: STICKER_AUTHOR,
-            type: "full",
-            quality: 80
-        });
-
-        const stickerBuffer = await sticker.toBuffer();
+        const stickerBuffer =
+            await addStickerMetadata(webpBuffer);
 
         await Joy.sendMessage(
             sender,
-            { sticker: stickerBuffer },
-            { quoted: msg }
+            {
+                sticker: stickerBuffer
+            },
+            {
+                quoted: msg
+            }
         );
 
-        await react("");
+        await react(Joy, sender, msg, "");
 
     } catch (error) {
         console.error("Sticker error:", error);
-        await react("❌");
+        await react(Joy, sender, msg, "❌");
     }
 };

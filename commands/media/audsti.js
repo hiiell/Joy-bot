@@ -1,7 +1,8 @@
 
-const STICKER_PACK = "joy";
-const STICKER_AUTHOR = "hilal";
-
+const PACK_NAME = "with joy, by hilal";
+// const STICKER_AUTHOR = "hilal";
+// 
+const ffmpegPath = require("ffmpeg-static");
 const pino = require("pino");
 const {
     downloadMediaMessage
@@ -91,7 +92,7 @@ module.exports = async (Joy, msg, reply) => {
 
         await fs.writeFile(input, buffer);
 
-        await exec("ffmpeg", [
+        await exec(ffmpegPath, [
             "-y",
             "-i", input,
             "-t", "10",
@@ -104,7 +105,7 @@ module.exports = async (Joy, msg, reply) => {
             video
         ]);
 
-        await exec("ffmpeg", [
+        await exec(ffmpegPath, [
             "-y",
             "-i", input,
             "-vn",
@@ -124,8 +125,8 @@ module.exports = async (Joy, msg, reply) => {
             {
                 sticker: stickerBuffer,
                 stickerAudio: audioBuffer,
-                pack: STICKER_PACK,
-                author: STICKER_AUTHOR
+                pack: PACK_NAME
+                // author: STICKER_AUTHOR
             },
             { quoted: msg }
         );

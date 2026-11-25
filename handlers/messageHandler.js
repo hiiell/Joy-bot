@@ -645,7 +645,7 @@ async function messageHandler(Joy, m) {
 
         // Audio sticker
         case "soundsticker":
-        case "auds":
+        case "audis":
             await audsti(Joy, msg, reply);
             break;
     }

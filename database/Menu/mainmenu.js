@@ -27,7 +27,7 @@ Masa Aktif ({{MASA_AKTIF}} hari)
 • .s
 • .brat
 • .tomed
-• .auds
+• .audis
 
 *BALANCE*
 • .tf
