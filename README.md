@@ -90,12 +90,11 @@ JOYBOT membagi fungsionalitasnya ke dalam beberapa kategori utama dengan pemisah
 JOYBOT menggunakan file **`api.env`** (dimuat melalui `dotenv`) untuk menyimpan konfigurasi sensitif dan API key.
 
 1. Pastikan file `api.env` tersedia di direktori utama (*root*) projek.
-2. Sesuaikan nilai pada **3 variabel environment** yang diperlukan di dalam file `api.env`:
+2. Sesuaikan nilai pada **1 variabel environment** yang diperlukan di dalam file `api.env`:
 
 ```env
 # Sesuaikan nama dan nilai variabel berdasarkan konfigurasi di api.env
-NAMA_VARIABEL1=API_KEY1
-NAMA_VARIABEL2=API_KEY2
+GROQ_API_KEY=API_KEY
 ```
 
 *(Periksa file `api.env` atau pemanggilan `process.env` pada source code untuk memastikan nama kunci variabel yang tepat sebelum menjalankan bot).*
@@ -130,4 +129,5 @@ Berikut adalah beberapa contoh perintah yang tersedia pada JOYBOT:
 ## 📄 Lisensi & Kredit
 
 * **Lisensi:** Didistribusikan di bawah lisensi [MIT](LICENSE).
-* **Developer:** **Hilal** — Pengembang utama **JOYBOT**.
+* **Developer:** [Hilal](https://github.com/hilalunivers08)
+* **Kredit & Kontribusi:** [Claude](https://claude.ai/)
