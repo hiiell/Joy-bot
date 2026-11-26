@@ -1,10 +1,5 @@
 
 const mainmenu = require("../../database/Menu/mainmenu");
-const gamesmenu = require("../../database/Menu/gamesmenu");
-const toolsmenu = require("../../database/Menu/toolsmenu");
-const downloadermenu = require("../../database/Menu/downloadermenu");
-const funmenu = require("../../database/Menu/funmenu");
-const accountmenu = require("../../database/Menu/accountmenu");
 
 const {
     getUser,
@@ -14,12 +9,7 @@ const {
 
 const MENUS = {
     menu: mainmenu,
-    mainmenu,
-    gamesmenu,
-    toolsmenu,
-    downloadermenu,
-    funmenu,
-    accountmenu
+    mainmenu
 };
 
 const USER_INFO_MENUS = new Set(["menu", "mainmenu"]);
