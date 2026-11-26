@@ -5,11 +5,15 @@ module.exports = async (
     msg,
     reply
 ) => {
-    const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+    const isWindows = process.platform === "win32";
+    const command = isWindows ? "cmd.exe" : "npm";
+    const args = isWindows
+        ? ["/c", "start", "", "cmd", "/k", "npm start"]
+        : ["start"];
 
     const child = spawn(
-        npmCommand,
-        ["start"],
+        command,
+        args,
         {
             cwd: process.cwd(),
             env: {
@@ -17,9 +21,8 @@ module.exports = async (
                 JOYBOT_RESTART_WAIT: "60000"
             },
             detached: true,
-            stdio: "inherit",
-            windowsHide: false,
-            shell: process.platform === "win32"
+            stdio: isWindows ? "ignore" : "inherit",
+            windowsHide: false
         }
     );
 

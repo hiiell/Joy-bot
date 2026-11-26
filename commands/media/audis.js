@@ -402,8 +402,6 @@ async function addStickerMetadata(webpBuffer) {
 
 
 // Build WebP filter
-// Output dimensions are actually 512px or 320px.
-// No padding back to 512px.
 
 function buildWebPFilter(scale) {
     return [
@@ -430,15 +428,12 @@ async function createAudisMedia(
         MAX_STICKER_DURATION
     );
 
-    // Adaptive resolution based on source file size.
     const sourceStat = await fs.stat(input);
 
     const outputScale = sourceStat.size > SOURCE_SIZE_THRESHOLD
         ? LARGE_SOURCE_SCALE
         : SMALL_SOURCE_SCALE;
 
-    // Keep the selected resolution fixed.
-    // Only reduce quality during compression retries.
     const qualityProfiles = [40, 34, 28, 24, 20, 16, 12, 9, 6];
 
     const firstQuality = qualityProfiles[0];
@@ -449,7 +444,7 @@ async function createAudisMedia(
         `output ${outputScale}px; FPS preserved; target ${Math.round(MAX_WEBP_SIZE / 1024)} KB`
     );
 
-    // FIRST PASS: audio + WebP in one FFmpeg process
+    // FIRST PASS: audio + WebP
 
     try {
         await runFFmpeg([
@@ -500,15 +495,13 @@ async function createAudisMedia(
     let rawBuffer = await fs.readFile(videoPath);
     let stickerBuffer = await addStickerMetadata(rawBuffer);
 
-    // First attempt already meets target.
     if (stickerBuffer.length <= MAX_WEBP_SIZE) {
         await onProgress(3);
         return { audioPath, stickerBuffer };
     }
 
-    // Re-encode WebP only.
-    // Audio is not processed again.
-    // FPS and resolution remain unchanged.
+    // Re-encode WebP only
+
     for (let i = 1; i < qualityProfiles.length; i++) {
         const quality = qualityProfiles[i];
 
@@ -547,10 +540,9 @@ module.exports = async (Joy, msg, reply) => {
     const sender = msg.key.remoteJid;
 
     let tempDir;
-    let progressMessage = null;
     let processSuccess = false;
 
-    // Reaction helper for original command message.
+    // Reaction helper: original command message
 
     const react = async (emoji) => {
         try {
@@ -565,7 +557,7 @@ module.exports = async (Joy, msg, reply) => {
         }
     };
 
-    // Countdown reactions on separate status message.
+    // Countdown reactions on original command
 
     const progressEmojis = {
         6: "6️⃣",
@@ -578,38 +570,30 @@ module.exports = async (Joy, msg, reply) => {
     };
 
     const updateProgress = async (remaining) => {
-        if (!progressMessage?.key) return;
-
         const emoji = progressEmojis[remaining] || String(remaining);
-
-        try {
-            await Joy.sendMessage(sender, {
-                react: {
-                    text: emoji,
-                    key: progressMessage.key
-                }
-            });
-        } catch (error) {
-            console.error("AUDIS progress error:", error.message);
-        }
+        await react(emoji);
     };
 
     try {
         // Check FFmpeg
+
         if (!ffmpegPath) {
             throw new Error("FFmpeg tidak ditemukan.");
         }
 
         // Check Sound Sticker support
+
         if (typeof Joy.sendSoundSticker !== "function") {
             throw new Error("Sound Sticker belum terpasang.");
         }
 
         // Normalize current message
+
         const currentContent =
             normalizeMessageContent(msg.message) || msg.message;
 
         // Parse command arguments
+
         const rawText =
             getMessageText(currentContent) ||
             msg.text ||
@@ -619,6 +603,7 @@ module.exports = async (Joy, msg, reply) => {
         const args = parseAudisArguments(rawText);
 
         // Default duration
+
         let requestedDuration = MAX_DURATION;
 
         if (args.lengthToken !== null) {
@@ -637,12 +622,14 @@ module.exports = async (Joy, msg, reply) => {
             }
         }
 
-        // Validate TikTok URL if provided
+        // Validate TikTok URL
+
         const mediaUrl = args.url
             ? validateTikTokUrl(args.url)
             : null;
 
         // Get current or quoted WhatsApp video
+
         const context =
             currentContent.extendedTextMessage?.contextInfo ||
             currentContent.imageMessage?.contextInfo ||
@@ -675,6 +662,7 @@ module.exports = async (Joy, msg, reply) => {
         }
 
         // Check input source
+
         if (!mediaUrl && !videoMessage) {
             return reply(
                 "Kirim video, balas video dengan .audis, atau gunakan:\n\n" +
@@ -685,23 +673,12 @@ module.exports = async (Joy, msg, reply) => {
             );
         }
 
-        // Keep hourglass on original command message
-        await react("⏳");
+        // Start reaction on user's command
 
-        // Separate status message for countdown reactions
-        try {
-            progressMessage = await Joy.sendMessage(
-                sender,
-                { text: "AUDIS" },
-                { quoted: msg }
-            );
-
-            await updateProgress(6);
-        } catch (error) {
-            console.error("AUDIS progress message error:", error.message);
-        }
+        await updateProgress(6);
 
         // Create temporary directory
+
         tempDir = await fs.mkdtemp(
             path.join(os.tmpdir(), "joy-audis-")
         );
@@ -714,6 +691,7 @@ module.exports = async (Joy, msg, reply) => {
         let input;
 
         // MODE 1: TikTok URL
+
         if (mediaUrl) {
             input = await downloadTikTokVideo(
                 mediaUrl,
@@ -721,6 +699,7 @@ module.exports = async (Joy, msg, reply) => {
             );
         } else {
             // MODE 2: WhatsApp video
+
             const buffer = await downloadMediaMessage(
                 targetMessage,
                 "buffer",
@@ -738,6 +717,7 @@ module.exports = async (Joy, msg, reply) => {
         await updateProgress(5);
 
         // Create OGG + WebP
+
         const result = await createAudisMedia(
             input,
             tempDir,
@@ -749,6 +729,7 @@ module.exports = async (Joy, msg, reply) => {
         const stickerBuffer = result.stickerBuffer;
 
         // Validate OGG
+
         if (
             audioBuffer.length < 64 ||
             audioBuffer.subarray(0, 4).toString("ascii") !== "OggS"
@@ -756,7 +737,8 @@ module.exports = async (Joy, msg, reply) => {
             throw new Error("Audio tidak valid.");
         }
 
-        // Validate WebP and final size
+        // Validate WebP
+
         if (
             stickerBuffer.length < 16 ||
             stickerBuffer.subarray(0, 4).toString("ascii") !== "RIFF" ||
@@ -769,6 +751,7 @@ module.exports = async (Joy, msg, reply) => {
         await updateProgress(2);
 
         // Send Sound Sticker
+
         await Joy.sendSoundSticker(
             sender,
             stickerBuffer,
@@ -777,6 +760,7 @@ module.exports = async (Joy, msg, reply) => {
         );
 
         await updateProgress(1);
+
         processSuccess = true;
 
     } catch (error) {
@@ -811,6 +795,7 @@ module.exports = async (Joy, msg, reply) => {
 
     } finally {
         // Cleanup temporary files
+
         if (tempDir) {
             await fs.rm(tempDir, {
                 recursive: true,
@@ -821,9 +806,12 @@ module.exports = async (Joy, msg, reply) => {
         }
 
         // 0 then green check after success
+
         if (processSuccess) {
             await updateProgress(0);
+
             await new Promise(resolve => setTimeout(resolve, 700));
+
             await react("✅");
         }
     }
