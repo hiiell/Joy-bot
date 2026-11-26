@@ -1,47 +1,47 @@
 module.exports = `_*{{UCAPAN}}, {{NAMA}}*_
-💰 Saldo: *{{SALDO}}*
-Masa Aktif ({{MASA_AKTIF}} hari)
-
 🕒 {{WAKTU}} WIB
--- {{TANGGAL}} --
+📆{{TANGGAL}}
+├─ 𝙱𝚊𝚕𝚊𝚗𝚌𝚎: *{{SALDO}}*
+└─ 𝙰𝚔𝚝𝚒𝚏: *{{MASA_AKTIF}} hari*
 
-*AI & DOWNLOADER*
-• .ai
-• .ttdl
+*𝙰𝙸 & 𝙳𝚘𝚠𝚗𝚕𝚘𝚊𝚍𝚎𝚛*
+├─ .ai
+└─ .ttdl
 
-*GAMES*
-• .quiz
-• .qumath
-• .tebakangka
-• .tebakgambar
-• .tebaklogo
-• .leadquiz
-• .leadtg
-• .clue
-• .nyerah
+*𝙶𝚊𝚖𝚎𝚜*
+├─ .quiz
+├─ .qumath
+├─ .tebakangka
+├─ .tebakgambar
+├─ .tebaklogo
+├─ .leadquiz
+├─ .leadtg
+├─ .clue
+└─ .nyerah
 
-*FUN*
-• .quote
-• .777
+*𝙵𝚞𝚗*
+├─ .quote
+└─ .777
 
-*TOOLS*
-• .s
-• .brat
-• .tomed
-• .audis
+*𝚃𝚘𝚘𝚕𝚜*
+├─ .s
+├─ .brat
+├─ .tomed
+├─ .mp3
+└─ .audis
 
-*BALANCE*
-• .tf
-• .daily
-• .ldbalance
-• .shop
-• .buy
-• .balance
-• .inventory
+*𝙱𝚊𝚕𝚊𝚗𝚌𝚎*
+├─ .tf
+├─ .daily
+├─ .ldbalance
+├─ .shop
+├─ .buy
+├─ .balance
+└─ .inventory
 
-*AKUN*
-• .reg
+*𝙰𝚔𝚞𝚗*
+└─ .reg
 
-𝖢𝖔𝔫𝓽𝚊𝖈𝔱 ｍ𝓮
-.author
+*𝙺𝚘𝚗𝚝𝚊𝚔:*
+└─ .author
 `;
