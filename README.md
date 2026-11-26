@@ -51,7 +51,7 @@ JOYBOT membagi fungsionalitasnya ke dalam beberapa kategori utama dengan pemisah
 ## 🛠️ Tech Stack
 
 * **Runtime & Module:** Node.js (`v24.22.1`) dengan sistem modul CommonJS (`require`).
-* **WhatsApp Engine:** `@whiskeysockets/baileys` (`v6.7.17`).
+* **WhatsApp Engine:** `baileys` (`v6.7.17`).
 * **Media Processing:**
   * `ffmpeg-static` — Pemrosesan audio dan video (termasuk ekstraksi audio untuk *Sound Sticker*).
   * `sharp` — Pengolahan dan penyesuaian ukuran gambar.
@@ -63,7 +63,7 @@ JOYBOT membagi fungsionalitasnya ke dalam beberapa kategori utama dengan pemisah
 ## 📦 Prasyarat & Instalasi
 
 ### Prasyarat Sistem
-* **Node.js** versi `24.22.1`
+* **Node.js** versi `>=18` (disarankan `v24.22.1`)
 * **npm** (terpasang otomatis bersama Node.js)
 * **Git** *(opsional, untuk melakukan clone repository)*
 * Koneksi internet yang stabil
@@ -74,7 +74,7 @@ JOYBOT membagi fungsionalitasnya ke dalam beberapa kategori utama dengan pemisah
 
 1. **Clone repository** (atau unduh source code projek):
    ```bash
-   git clone https://github.com/hilalunivers08/Joy-bot
+   git clone https://github.com/hiiell/Joy-bot
    cd Joy-bot
    ```
 
@@ -123,6 +123,7 @@ Berikut adalah beberapa contoh perintah yang tersedia pada JOYBOT:
 | `.sticker` | `.s` | Mengubah gambar atau foto menjadi stiker WhatsApp. | Public |
 | `.audis` | - | Mengubah video menjadi *Sound Sticker* WhatsApp bersuara. | Public |
 | `.say` | - | Mengirimkan pesan melalui bot. | Owner |
+| `.botrestart` | - | Menghentikan bot dan menjalankan ulang `npm start`. | Owner |
 
 ---
 
