@@ -11,6 +11,7 @@ Masa Aktif ({{MASA_AKTIF}} hari)
 
 *GAMES*
 • .quiz
+• .qumath
 • .tebakangka
 • .tebakgambar
 • .tebaklogo

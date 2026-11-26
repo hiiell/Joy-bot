@@ -12,9 +12,14 @@ const MAX_STICKER_DURATION = 10;
 const MAX_WEBP_SIZE = 480 * 1024;
 const MAX_DOWNLOAD_SIZE = 80 * 1024 * 1024;
 
+// Adaptive resolution
+const SOURCE_SIZE_THRESHOLD = 5 * 1024 * 1024;
+const SMALL_SOURCE_SCALE = 512;
+const LARGE_SOURCE_SCALE = 320;
+const WEBP_COMPRESSION_LEVEL = 6;
+
 const TIKTOK_API =
     "https://ikhlasapi.web.id/api/downloader/tiktok-v2";
-
 
 // Dependencies
 
@@ -27,7 +32,6 @@ const {
 
 const { execFile } = require("child_process");
 const { promisify } = require("util");
-
 const fs = require("fs/promises");
 const fsSync = require("fs");
 const path = require("path");
@@ -49,7 +53,7 @@ function makeError(message, code) {
 }
 
 
-// FFmpeg helper
+// Run FFmpeg
 
 async function runFFmpeg(args) {
     return exec(ffmpegPath, [
@@ -87,9 +91,7 @@ function parseAudisArguments(text) {
         .replace(/^\.audis(?:@\S+)?\s*/i, "")
         .trim();
 
-    const urlMatch = body.match(
-        /https?:\/\/[^\s<>"']+/i
-    );
+    const urlMatch = body.match(/https?:\/\/[^\s<>"']+/i);
 
     let url = null;
     let lengthToken = null;
@@ -104,7 +106,6 @@ function parseAudisArguments(text) {
         if (remaining) {
             lengthToken = remaining.split(/\s+/)[0];
         }
-
     } else {
         const tokens = body.split(/\s+/).filter(Boolean);
 
@@ -113,10 +114,7 @@ function parseAudisArguments(text) {
         }
     }
 
-    return {
-        url,
-        lengthToken
-    };
+    return { url, lengthToken };
 }
 
 
@@ -161,10 +159,7 @@ function validateTikTokUrl(rawUrl) {
     try {
         parsed = new URL(rawUrl);
     } catch {
-        throw makeError(
-            "Link tidak valid.",
-            "INVALID_URL"
-        );
+        throw makeError("Link tidak valid.", "INVALID_URL");
     }
 
     if (
@@ -172,23 +167,16 @@ function validateTikTokUrl(rawUrl) {
         parsed.username ||
         parsed.password
     ) {
-        throw makeError(
-            "Link tidak valid.",
-            "INVALID_URL"
-        );
+        throw makeError("Link tidak valid.", "INVALID_URL");
     }
 
     const hostname = parsed.hostname.toLowerCase();
-
     const isTikTokHost =
         hostname === "tiktok.com" ||
         hostname.endsWith(".tiktok.com");
 
     if (!isTikTokHost || isPrivateIp(hostname)) {
-        throw makeError(
-            "Link TikTok tidak valid.",
-            "INVALID_URL"
-        );
+        throw makeError("Link TikTok tidak valid.", "INVALID_URL");
     }
 
     return parsed.href;
@@ -204,13 +192,9 @@ function findVideoUrl(data) {
         if (typeof value === "string") {
             if (!/^https?:\/\//i.test(value)) return;
 
-            const key = keyPath
-                .join(".")
-                .toLowerCase();
+            const key = keyPath.join(".").toLowerCase();
 
-            if (
-                /audio|music|cover|avatar|image|photo|thumbnail/.test(key)
-            ) {
+            if (/audio|music|cover|avatar|image|photo|thumbnail/.test(key)) {
                 return;
             }
 
@@ -223,10 +207,7 @@ function findVideoUrl(data) {
             if (/\.mp4(?:[?#]|$)/i.test(value)) score += 4;
 
             if (score > 0) {
-                candidates.push({
-                    url: value,
-                    score
-                });
+                candidates.push({ url: value, score });
             }
 
             return;
@@ -236,18 +217,12 @@ function findVideoUrl(data) {
             value.forEach((item, index) => {
                 scan(item, [...keyPath, String(index)]);
             });
-
             return;
         }
 
         if (value && typeof value === "object") {
             const isVideo = /video/i.test(
-                String(
-                    value.type ||
-                    value.mimeType ||
-                    value.mime_type ||
-                    ""
-                )
+                String(value.type || value.mimeType || value.mime_type || "")
             );
 
             for (const [key, item] of Object.entries(value)) {
@@ -267,75 +242,44 @@ function findVideoUrl(data) {
 }
 
 
-// Download TikTok video through TTDL
+// Download TikTok video
 
 async function downloadTikTokVideo(url, outputPath) {
     let data;
 
     try {
-        const response = await axios.get(
-            TIKTOK_API,
-            {
-                params: { url },
-                headers: {
-                    Accept: "application/json"
-                },
-                timeout: 60000,
-                maxContentLength: 5 * 1024 * 1024
-            }
-        );
+        const response = await axios.get(TIKTOK_API, {
+            params: { url },
+            headers: { Accept: "application/json" },
+            timeout: 60000,
+            maxContentLength: 5 * 1024 * 1024
+        });
 
         data = response.data;
-
     } catch (error) {
-        console.error(
-            "[AUDIS TTDL API]",
-            error.message
-        );
+        console.error("[AUDIS TTDL API]", error.message);
+        throw makeError("Gagal mengambil data TikTok.", "URL_DOWNLOAD_FAILED");
+    }
 
+    if (data?.status === false || data?.success === false) {
         throw makeError(
-            "Gagal mengambil data TikTok.",
+            data.message || data.error || "Video TikTok tidak tersedia.",
             "URL_DOWNLOAD_FAILED"
         );
     }
-
-
-    // Validate API response
-
-    if (
-        data?.status === false ||
-        data?.success === false
-    ) {
-        throw makeError(
-            "Video TikTok tidak tersedia.",
-            "URL_DOWNLOAD_FAILED"
-        );
-    }
-
-
-    // Find video URL
 
     const videoUrl = findVideoUrl(data);
 
     if (!videoUrl) {
-        throw makeError(
-            "Video TikTok tidak ditemukan.",
-            "URL_DOWNLOAD_FAILED"
-        );
+        throw makeError("Video TikTok tidak ditemukan.", "URL_DOWNLOAD_FAILED");
     }
-
-
-    // Validate returned media URL
 
     let parsedVideoUrl;
 
     try {
         parsedVideoUrl = new URL(videoUrl);
     } catch {
-        throw makeError(
-            "URL video tidak valid.",
-            "URL_DOWNLOAD_FAILED"
-        );
+        throw makeError("URL video tidak valid.", "URL_DOWNLOAD_FAILED");
     }
 
     const videoHost = parsedVideoUrl.hostname.toLowerCase();
@@ -349,14 +293,8 @@ async function downloadTikTokVideo(url, outputPath) {
         videoHost.endsWith(".local") ||
         isPrivateIp(videoHost)
     ) {
-        throw makeError(
-            "URL video tidak valid.",
-            "URL_DOWNLOAD_FAILED"
-        );
+        throw makeError("URL video tidak valid.", "URL_DOWNLOAD_FAILED");
     }
-
-
-    // Download video as stream
 
     let media;
 
@@ -367,21 +305,10 @@ async function downloadTikTokVideo(url, outputPath) {
             maxContentLength: MAX_DOWNLOAD_SIZE,
             maxBodyLength: MAX_DOWNLOAD_SIZE
         });
-
     } catch (error) {
-        console.error(
-            "[AUDIS TTDL MEDIA]",
-            error.message
-        );
-
-        throw makeError(
-            "Gagal mengunduh video TikTok.",
-            "URL_DOWNLOAD_FAILED"
-        );
+        console.error("[AUDIS TTDL MEDIA]", error.message);
+        throw makeError("Gagal mengunduh video TikTok.", "URL_DOWNLOAD_FAILED");
     }
-
-
-    // Validate media response
 
     const contentType = String(
         media.headers["content-type"] || ""
@@ -397,15 +324,8 @@ async function downloadTikTokVideo(url, outputPath) {
         (contentLength && contentLength > MAX_DOWNLOAD_SIZE)
     ) {
         media.data.destroy();
-
-        throw makeError(
-            "Respons video tidak valid.",
-            "URL_DOWNLOAD_FAILED"
-        );
+        throw makeError("Respons video tidak valid.", "URL_DOWNLOAD_FAILED");
     }
-
-
-    // Limit downloaded size
 
     let downloadedBytes = 0;
 
@@ -414,13 +334,7 @@ async function downloadTikTokVideo(url, outputPath) {
             downloadedBytes += chunk.length;
 
             if (downloadedBytes > MAX_DOWNLOAD_SIZE) {
-                callback(
-                    makeError(
-                        "Video terlalu besar.",
-                        "MEDIA_TOO_LARGE"
-                    )
-                );
-
+                callback(makeError("Video terlalu besar.", "MEDIA_TOO_LARGE"));
                 return;
             }
 
@@ -428,21 +342,14 @@ async function downloadTikTokVideo(url, outputPath) {
         }
     });
 
-
-    // Save temporary file
-
     try {
         await pipeline(
             media.data,
             sizeLimiter,
             fsSync.createWriteStream(outputPath)
         );
-
     } catch (error) {
-        await fs.rm(outputPath, {
-            force: true
-        }).catch(() => {});
-
+        await fs.rm(outputPath, { force: true }).catch(() => {});
         throw makeError(
             error.code === "MEDIA_TOO_LARGE"
                 ? "Video terlalu besar."
@@ -453,14 +360,10 @@ async function downloadTikTokVideo(url, outputPath) {
         );
     }
 
-
     const stat = await fs.stat(outputPath);
 
     if (!stat.size) {
-        throw makeError(
-            "Video kosong.",
-            "URL_DOWNLOAD_FAILED"
-        );
+        throw makeError("Video kosong.", "URL_DOWNLOAD_FAILED");
     }
 
     return outputPath;
@@ -475,10 +378,7 @@ async function addStickerMetadata(webpBuffer) {
         "sticker-pack-name": PACK_NAME
     };
 
-    const jsonBuffer = Buffer.from(
-        JSON.stringify(metadata),
-        "utf8"
-    );
+    const jsonBuffer = Buffer.from(JSON.stringify(metadata), "utf8");
 
     const exifHeader = Buffer.from([
         0x49, 0x49, 0x2A, 0x00,
@@ -490,44 +390,31 @@ async function addStickerMetadata(webpBuffer) {
         0x16, 0x00, 0x00, 0x00
     ]);
 
-    const exif = Buffer.concat([
-        exifHeader,
-        jsonBuffer
-    ]);
-
-    exif.writeUIntLE(
-        jsonBuffer.length,
-        14,
-        4
-    );
+    const exif = Buffer.concat([exifHeader, jsonBuffer]);
+    exif.writeUIntLE(jsonBuffer.length, 14, 4);
 
     const image = new WebP.Image();
-
     await image.load(webpBuffer);
-
     image.exif = exif;
 
-    return await image.save(null);
+    return image.save(null);
 }
 
 
 // Build WebP filter
-// FPS is intentionally not modified.
+// Output dimensions are actually 512px or 320px.
+// No padding back to 512px.
 
-function buildWebPFilter(profile) {
+function buildWebPFilter(scale) {
     return [
-        `scale=${profile.scale}:${profile.scale}:force_original_aspect_ratio=decrease:force_divisible_by=2`,
+        `scale=${scale}:${scale}:force_original_aspect_ratio=decrease:force_divisible_by=2`,
         "format=rgba",
-        "pad=512:512:(ow-iw)/2:(oh-ih)/2:color=black@0",
         "setsar=1"
     ].join(",");
 }
 
 
-// AUDIS conversion
-// First FFmpeg process creates audio + WebP.
-// If WebP exceeds 480 KB, only its visual encoding is repeated.
-// Source FPS is preserved.
+// Optimized AUDIS conversion
 
 async function createAudisMedia(
     input,
@@ -535,180 +422,122 @@ async function createAudisMedia(
     requestedDuration,
     onProgress = async () => {}
 ) {
-    const audioPath = path.join(
-        tempDir,
-        "audio.ogg"
-    );
-
-    const videoPath = path.join(
-        tempDir,
-        "sticker.webp"
-    );
+    const audioPath = path.join(tempDir, "audio.ogg");
+    const videoPath = path.join(tempDir, "sticker.webp");
 
     const stickerDuration = Math.min(
         requestedDuration,
         MAX_STICKER_DURATION
     );
 
+    // Adaptive resolution based on source file size.
+    const sourceStat = await fs.stat(input);
 
-    // Compression profiles
-    // Only quality and pixel resolution change.
+    const outputScale = sourceStat.size > SOURCE_SIZE_THRESHOLD
+        ? LARGE_SOURCE_SCALE
+        : SMALL_SOURCE_SCALE;
 
-    const profiles = [
-        { quality: 40, scale: 512 },
-        { quality: 32, scale: 448 },
-        { quality: 25, scale: 384 },
-        { quality: 18, scale: 320 },
-        { quality: 12, scale: 256 }
-    ];
+    // Keep the selected resolution fixed.
+    // Only reduce quality during compression retries.
+    const qualityProfiles = [40, 34, 28, 24, 20, 16, 12, 9, 6];
 
+    const firstQuality = qualityProfiles[0];
+    const webpFilter = buildWebPFilter(outputScale);
 
-    // FIRST PASS:
-    // Audio and WebP in one FFmpeg process.
+    console.log(
+        `[AUDIS] Source ${(sourceStat.size / 1024 / 1024).toFixed(2)} MB; ` +
+        `output ${outputScale}px; FPS preserved; target ${Math.round(MAX_WEBP_SIZE / 1024)} KB`
+    );
+
+    // FIRST PASS: audio + WebP in one FFmpeg process
 
     try {
         await runFFmpeg([
             "-y",
             "-i", input,
 
-            // Output 1: Audio
-
+            // Output 1: OGG audio
             "-map", "0:a:0",
             "-vn",
             "-t", String(requestedDuration),
-
             "-c:a", "libopus",
             "-b:a", "48k",
             "-ar", "48000",
             "-ac", "1",
             "-application", "voip",
-
             "-avoid_negative_ts", "make_zero",
             "-map_metadata", "-1",
-
             "-f", "ogg",
             audioPath,
 
-
-            // Output 2: Animated WebP
-
+            // Output 2: animated WebP
             "-map", "0:v:0",
             "-an",
             "-t", String(stickerDuration),
-
-            "-vf", buildWebPFilter(profiles[0]),
-
-            // Preserve source frame timestamps.
+            "-vf", webpFilter,
             "-fps_mode:v", "passthrough",
-
             "-c:v", "libwebp",
             "-lossless", "0",
-            "-compression_level", "4",
-            "-quality", String(profiles[0].quality),
+            "-compression_level", String(WEBP_COMPRESSION_LEVEL),
+            "-quality", String(firstQuality),
             "-loop", "0",
-
             videoPath
         ]);
-
     } catch (error) {
-        const stderr = String(
-            error.stderr ||
-            error.message ||
-            ""
-        );
+        const stderr = String(error.stderr || error.message || "");
 
         if (
-            /matches no streams|does not contain any stream|Stream map.*matches no streams/i
-                .test(stderr)
+            /matches no streams|does not contain any stream|Stream map.*matches no streams/i.test(stderr)
         ) {
-            throw makeError(
-                "Video tidak memiliki suara.",
-                "NO_AUDIO_TRACK"
-            );
+            throw makeError("Video tidak memiliki suara.", "NO_AUDIO_TRACK");
         }
 
         throw error;
     }
 
-
-    // FFmpeg completed
-
     await onProgress(4);
 
-
-    // Read first WebP
-
     let rawBuffer = await fs.readFile(videoPath);
+    let stickerBuffer = await addStickerMetadata(rawBuffer);
 
-    let stickerBuffer = await addStickerMetadata(
-        rawBuffer
-    );
-
-
-    // First profile meets size requirement
-
+    // First attempt already meets target.
     if (stickerBuffer.length <= MAX_WEBP_SIZE) {
         await onProgress(3);
-
-        return {
-            audioPath,
-            stickerBuffer
-        };
+        return { audioPath, stickerBuffer };
     }
 
-
-    // FALLBACK:
-    // Re-encode only WebP.
-    // Audio is never encoded again.
-
-    for (let i = 1; i < profiles.length; i++) {
-        const profile = profiles[i];
+    // Re-encode WebP only.
+    // Audio is not processed again.
+    // FPS and resolution remain unchanged.
+    for (let i = 1; i < qualityProfiles.length; i++) {
+        const quality = qualityProfiles[i];
 
         await runFFmpeg([
             "-y",
             "-i", input,
-
             "-map", "0:v:0",
             "-an",
-
             "-t", String(stickerDuration),
-
-            "-vf", buildWebPFilter(profile),
-
+            "-vf", webpFilter,
             "-fps_mode:v", "passthrough",
-
             "-c:v", "libwebp",
             "-lossless", "0",
-            "-compression_level", "4",
-            "-quality", String(profile.quality),
+            "-compression_level", String(WEBP_COMPRESSION_LEVEL),
+            "-quality", String(quality),
             "-loop", "0",
-
             videoPath
         ]);
 
-
         rawBuffer = await fs.readFile(videoPath);
-
-        stickerBuffer = await addStickerMetadata(
-            rawBuffer
-        );
-
+        stickerBuffer = await addStickerMetadata(rawBuffer);
 
         if (stickerBuffer.length <= MAX_WEBP_SIZE) {
             await onProgress(3);
-
-            return {
-                audioPath,
-                stickerBuffer
-            };
+            return { audioPath, stickerBuffer };
         }
     }
 
-
-    throw makeError(
-        "Gagal membuat stiker.",
-        "STICKER_TOO_LARGE"
-    );
+    throw makeError("Gagal membuat stiker.", "STICKER_TOO_LARGE");
 }
 
 
@@ -718,11 +547,10 @@ module.exports = async (Joy, msg, reply) => {
     const sender = msg.key.remoteJid;
 
     let tempDir;
+    let progressMessage = null;
     let processSuccess = false;
 
-
-    // Reaction helper
-    // All reactions target the original command message.
+    // Reaction helper for original command message.
 
     const react = async (emoji) => {
         try {
@@ -732,17 +560,12 @@ module.exports = async (Joy, msg, reply) => {
                     key: msg.key
                 }
             });
-
         } catch (error) {
-            console.error(
-                "AUDIS reaction error:",
-                error.message
-            );
+            console.error("Reaction error:", error.message);
         }
     };
 
-
-    // Countdown reaction
+    // Countdown reactions on separate status message.
 
     const progressEmojis = {
         6: "6️⃣",
@@ -754,45 +577,39 @@ module.exports = async (Joy, msg, reply) => {
         0: "0️⃣"
     };
 
-
     const updateProgress = async (remaining) => {
-        const emoji = progressEmojis[remaining];
+        if (!progressMessage?.key) return;
 
-        if (emoji) {
-            await react(emoji);
+        const emoji = progressEmojis[remaining] || String(remaining);
+
+        try {
+            await Joy.sendMessage(sender, {
+                react: {
+                    text: emoji,
+                    key: progressMessage.key
+                }
+            });
+        } catch (error) {
+            console.error("AUDIS progress error:", error.message);
         }
     };
 
-
     try {
-
         // Check FFmpeg
-
         if (!ffmpegPath) {
-            throw new Error(
-                "FFmpeg tidak ditemukan."
-            );
+            throw new Error("FFmpeg tidak ditemukan.");
         }
-
 
         // Check Sound Sticker support
-
         if (typeof Joy.sendSoundSticker !== "function") {
-            throw new Error(
-                "Sound Sticker belum terpasang."
-            );
+            throw new Error("Sound Sticker belum terpasang.");
         }
 
-
         // Normalize current message
-
         const currentContent =
-            normalizeMessageContent(msg.message) ||
-            msg.message;
-
+            normalizeMessageContent(msg.message) || msg.message;
 
         // Parse command arguments
-
         const rawText =
             getMessageText(currentContent) ||
             msg.text ||
@@ -801,70 +618,47 @@ module.exports = async (Joy, msg, reply) => {
 
         const args = parseAudisArguments(rawText);
 
-
         // Default duration
-
         let requestedDuration = MAX_DURATION;
 
         if (args.lengthToken !== null) {
-
             if (!/^\d+$/.test(args.lengthToken)) {
-                return reply(
-                    "Length harus berupa angka."
-                );
+                return reply("Length harus berupa angka.");
             }
 
-            requestedDuration = Number(
-                args.lengthToken
-            );
+            requestedDuration = Number(args.lengthToken);
 
             if (requestedDuration > MAX_DURATION) {
-                return reply(
-                    `Maksimal durasi ${MAX_DURATION} detik.`
-                );
+                return reply(`Maksimal durasi ${MAX_DURATION} detik.`);
             }
 
             if (requestedDuration < 1) {
-                return reply(
-                    "Minimal durasi 1 detik."
-                );
+                return reply("Minimal durasi 1 detik.");
             }
         }
 
-
-        // Validate TikTok URL
-
+        // Validate TikTok URL if provided
         const mediaUrl = args.url
             ? validateTikTokUrl(args.url)
             : null;
 
-
-        // Get current or quoted video
-
+        // Get current or quoted WhatsApp video
         const context =
             currentContent.extendedTextMessage?.contextInfo ||
             currentContent.imageMessage?.contextInfo ||
             currentContent.videoMessage?.contextInfo;
-
 
         let targetMessage = {
             ...msg,
             message: currentContent
         };
 
-
-        let videoMessage =
-            currentContent.videoMessage;
-
-
-        // Support replying to video
+        let videoMessage = currentContent.videoMessage;
 
         if (!videoMessage && context?.quotedMessage) {
-
             const quotedContent =
-                normalizeMessageContent(
-                    context.quotedMessage
-                ) || context.quotedMessage;
+                normalizeMessageContent(context.quotedMessage) ||
+                context.quotedMessage;
 
             videoMessage = quotedContent.videoMessage;
 
@@ -880,9 +674,7 @@ module.exports = async (Joy, msg, reply) => {
             }
         }
 
-
         // Check input source
-
         if (!mediaUrl && !videoMessage) {
             return reply(
                 "Kirim video, balas video dengan .audis, atau gunakan:\n\n" +
@@ -893,25 +685,26 @@ module.exports = async (Joy, msg, reply) => {
             );
         }
 
-
-        // Initial reaction on original command
-
+        // Keep hourglass on original command message
         await react("⏳");
 
+        // Separate status message for countdown reactions
+        try {
+            progressMessage = await Joy.sendMessage(
+                sender,
+                { text: "AUDIS" },
+                { quoted: msg }
+            );
 
-        // Start countdown
-
-        await updateProgress(6);
-
+            await updateProgress(6);
+        } catch (error) {
+            console.error("AUDIS progress message error:", error.message);
+        }
 
         // Create temporary directory
-
         tempDir = await fs.mkdtemp(
             path.join(os.tmpdir(), "joy-audis-")
         );
-
-
-        // Input video path
 
         const inputPath = path.join(
             tempDir,
@@ -920,52 +713,31 @@ module.exports = async (Joy, msg, reply) => {
 
         let input;
 
-
-        // MODE 1: TikTok URL through TTDL
-
+        // MODE 1: TikTok URL
         if (mediaUrl) {
-
             input = await downloadTikTokVideo(
                 mediaUrl,
                 inputPath
             );
-
-        }
-
-
-        // MODE 2: WhatsApp video
-
-        else {
-
+        } else {
+            // MODE 2: WhatsApp video
             const buffer = await downloadMediaMessage(
                 targetMessage,
                 "buffer",
                 {},
                 {
-                    logger: pino({
-                        level: "silent"
-                    }),
-
+                    logger: pino({ level: "silent" }),
                     reuploadRequest: Joy.updateMediaMessage
                 }
             );
 
-            await fs.writeFile(
-                inputPath,
-                buffer
-            );
-
+            await fs.writeFile(inputPath, buffer);
             input = inputPath;
         }
 
-
-        // Download completed
-
         await updateProgress(5);
 
-
-        // Combined FFmpeg processing + WebP compression
-
+        // Create OGG + WebP
         const result = await createAudisMedia(
             input,
             tempDir,
@@ -973,144 +745,85 @@ module.exports = async (Joy, msg, reply) => {
             updateProgress
         );
 
-
-        const audioBuffer = await fs.readFile(
-            result.audioPath
-        );
-
+        const audioBuffer = await fs.readFile(result.audioPath);
         const stickerBuffer = result.stickerBuffer;
 
-
-        // Validate audio
-
+        // Validate OGG
         if (
             audioBuffer.length < 64 ||
             audioBuffer.subarray(0, 4).toString("ascii") !== "OggS"
         ) {
-            throw new Error(
-                "Audio tidak valid."
-            );
+            throw new Error("Audio tidak valid.");
         }
 
-
-        // Validate WebP and size
-
+        // Validate WebP and final size
         if (
             stickerBuffer.length < 16 ||
             stickerBuffer.subarray(0, 4).toString("ascii") !== "RIFF" ||
             stickerBuffer.subarray(8, 12).toString("ascii") !== "WEBP" ||
             stickerBuffer.length > MAX_WEBP_SIZE
         ) {
-            throw new Error(
-                "Stiker tidak valid."
-            );
+            throw new Error("Stiker tidak valid.");
         }
-
-
-        // Validation completed
 
         await updateProgress(2);
 
-
-        // One step remaining: send sticker
-
-        await updateProgress(1);
-
-
         // Send Sound Sticker
-
         await Joy.sendSoundSticker(
             sender,
             stickerBuffer,
             audioBuffer,
-            {
-                quoted: msg
-            }
+            { quoted: msg }
         );
 
-
+        await updateProgress(1);
         processSuccess = true;
 
-
     } catch (error) {
+        console.error("Audis error:", error);
 
-        console.error(
-            "Audis error:",
-            error
-        );
-
-
-        // Error reaction on original command
-
-        await react("❌");
-
+        await updateProgress("❌");
 
         switch (error.code) {
-
             case "NO_AUDIO_TRACK":
-                await reply(
-                    "Video tidak memiliki suara."
-                );
+                await reply("Video tidak memiliki suara.");
                 break;
 
             case "INVALID_URL":
-                await reply(
-                    "Link TikTok tidak valid."
-                );
+                await reply("Link TikTok tidak valid.");
                 break;
 
             case "URL_DOWNLOAD_FAILED":
-                await reply(
-                    "Gagal mengunduh media."
-                );
+                await reply("Gagal mengunduh media.");
                 break;
 
             case "MEDIA_TOO_LARGE":
-                await reply(
-                    "Video terlalu besar."
-                );
+                await reply("Video terlalu besar.");
+                break;
+
+            case "STICKER_TOO_LARGE":
+                await reply("Gagal membuat stiker.");
                 break;
 
             default:
-                await reply(
-                    "Gagal membuat stiker."
-                );
+                await reply("Gagal membuat stiker.");
         }
 
-
     } finally {
-
         // Cleanup temporary files
-
         if (tempDir) {
             await fs.rm(tempDir, {
                 recursive: true,
                 force: true
             }).catch(error => {
-                console.error(
-                    "Temp cleanup error:",
-                    error.message
-                );
+                console.error("Temp cleanup error:", error.message);
             });
         }
 
-
-        // Completion countdown
-
+        // 0 then green check after success
         if (processSuccess) {
-
-            // 0: All processing and cleanup completed
-
             await updateProgress(0);
-
-            // Briefly show 0 before final confirmation
-
-            await new Promise(resolve => {
-                setTimeout(resolve, 700);
-            });
-
-            // Final green check
-
+            await new Promise(resolve => setTimeout(resolve, 700));
             await react("✅");
         }
     }
