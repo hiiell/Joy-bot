@@ -1,16 +1,17 @@
+
 const WebP = require("node-webpmux");
 
 const PACK_ID = "com.joybot.stickers";
 const PACK_NAME = "with joy, by hilal";
-// const PACK_AUTHOR = "hilal";
-// const PACK_EMOJIS = ["✨"];
+
+const MAX_DURATION = 30;
+
+// Sticker metadata
 
 async function addStickerMetadata(webpBuffer) {
     const metadata = {
         "sticker-pack-id": PACK_ID,
-        "sticker-pack-name": PACK_NAME,
-        // "sticker-pack-publisher": PACK_AUTHOR,
-        // emojis: PACK_EMOJIS
+        "sticker-pack-name": PACK_NAME
     };
 
     const jsonBuffer = Buffer.from(
@@ -87,6 +88,7 @@ module.exports = async (Joy, msg, reply) => {
     let tempDir;
 
     // Reaction helper
+
     const react = async (emoji) => {
         try {
             await Joy.sendMessage(sender, {
@@ -106,6 +108,7 @@ module.exports = async (Joy, msg, reply) => {
     try {
 
         // Check FFmpeg
+
         if (!ffmpegPath) {
             throw new Error(
                 "FFmpeg tidak ditemukan. Jalankan: npm install ffmpeg-static"
@@ -113,13 +116,15 @@ module.exports = async (Joy, msg, reply) => {
         }
 
         // Check Sound Sticker support
+
         if (typeof Joy.sendSoundSticker !== "function") {
             throw new Error(
-                "Fitur pengiriman Sound Sticker belum terpasang di index.js."
+                "Fitur Sound Sticker belum terpasang di index.js."
             );
         }
 
         // Normalize current message
+
         const currentContent =
             normalizeMessageContent(msg.message) ||
             msg.message;
@@ -137,6 +142,7 @@ module.exports = async (Joy, msg, reply) => {
             currentContent.videoMessage;
 
         // Support replying to a video
+
         if (!videoMessage && context?.quotedMessage) {
             const quotedContent =
                 normalizeMessageContent(context.quotedMessage) ||
@@ -157,6 +163,7 @@ module.exports = async (Joy, msg, reply) => {
         }
 
         // Check video
+
         if (!videoMessage) {
             return reply(
                 "Kirim video atau balas video dengan command .audis"
@@ -166,26 +173,21 @@ module.exports = async (Joy, msg, reply) => {
         await react("⏳");
 
         // Create temporary directory
+
         tempDir = await fs.mkdtemp(
             path.join(os.tmpdir(), "joy-audis-")
         );
 
-        // Download video
-        const buffer = await downloadMediaMessage(
-            targetMessage,
-            "buffer",
-            {},
-            {
-                logger: pino({
-                    level: "silent"
-                }),
-                reuploadRequest: Joy.updateMediaMessage
-            }
-        );
+        // File paths
 
         const input = path.join(
             tempDir,
             "input.mp4"
+        );
+
+        const trimmed = path.join(
+            tempDir,
+            "trimmed.mp4"
         );
 
         const video = path.join(
@@ -198,25 +200,69 @@ module.exports = async (Joy, msg, reply) => {
             "audio.ogg"
         );
 
+        // Download original video
+
+        const buffer = await downloadMediaMessage(
+            targetMessage,
+            "buffer",
+            {},
+            {
+                logger: pino({
+                    level: "silent"
+                }),
+                reuploadRequest: Joy.updateMediaMessage
+            }
+        );
+
         await fs.writeFile(input, buffer);
 
 
-        // Extract audio (maximum 5 seconds)
+        // STEP 1: Trim video to maximum 30 seconds
+
+        await exec(ffmpegPath, [
+            "-y",
+            "-i", input,
+
+            "-t", String(MAX_DURATION),
+
+            "-map", "0:v:0",
+            "-map", "0:a:0?",
+
+            "-c:v", "libx264",
+            "-preset", "veryfast",
+            "-crf", "20",
+            "-pix_fmt", "yuv420p",
+
+            "-c:a", "aac",
+            "-b:a", "128k",
+
+            "-movflags", "+faststart",
+
+            trimmed
+        ]);
+
+        
+        // STEP 2: Extract audio from trimmed video
 
         try {
             await exec(ffmpegPath, [
                 "-y",
-                "-i", input,
+                "-i", trimmed,
+
                 "-map", "0:a:0",
                 "-vn",
-                "-t", "5",
+
+                "-t", String(MAX_DURATION),
+
                 "-c:a", "libopus",
                 "-b:a", "48k",
                 "-ar", "48000",
                 "-ac", "1",
                 "-application", "voip",
+
                 "-avoid_negative_ts", "make_zero",
                 "-map_metadata", "-1",
+
                 "-f", "ogg",
                 audio
             ]);
@@ -242,22 +288,28 @@ module.exports = async (Joy, msg, reply) => {
         }
 
 
-        // Convert video to animated WebP (maximum 10 seconds)
-        
+        // STEP 3: Convert trimmed video to animated WebP
+
         await exec(ffmpegPath, [
             "-y",
-            "-i", input,
-            "-t", "10",
+            "-i", trimmed,
+
+            "-t", String(MAX_DURATION),
+
             "-an",
+
             "-vf",
             "fps=15,scale=512:512:force_original_aspect_ratio=decrease:force_divisible_by=2,setsar=1",
+
             "-c:v", "libwebp",
             "-loop", "0",
             "-quality", "60",
+
             video
         ]);
 
-        // Read generated files
+
+        // STEP 4: Read generated files
 
         const rawStickerBuffer = await fs.readFile(video);
         const audioBuffer = await fs.readFile(audio);
@@ -275,7 +327,7 @@ module.exports = async (Joy, msg, reply) => {
         }
 
 
-        // Add sticker metadata
+        // STEP 5: Add sticker metadata
 
         const stickerBuffer = await addStickerMetadata(
             rawStickerBuffer
@@ -295,7 +347,7 @@ module.exports = async (Joy, msg, reply) => {
         }
 
 
-        // Send Sound Sticker
+        // STEP 6: Send Sound Sticker
 
         await Joy.sendSoundSticker(
             sender,
