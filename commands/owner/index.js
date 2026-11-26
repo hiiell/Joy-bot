@@ -1,5 +1,5 @@
 const say = require("./say");
-const restart = require("./restart");
+const botrestart = require("./botrestart");
 const debug = require("./debug");
 const ping = require("./ping");
 const uptime = require("./uptime");
@@ -9,7 +9,7 @@ const aaeiilnndraatt = require("./aaeiilnndraatt");
 
 const commands = {
     say,
-    restart,
+    botrestart,
     debug,
     ping,
     uptime,

@@ -5,17 +5,11 @@ module.exports = async (
     msg,
     reply
 ) => {
-    const entryArgs = process.argv.slice(1);
-
-    if (!entryArgs.length) {
-        return reply(
-            "Restart gagal: entry point tidak ditemukan."
-        );
-    }
+    const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 
     const child = spawn(
-        process.execPath,
-        entryArgs,
+        npmCommand,
+        ["start"],
         {
             cwd: process.cwd(),
             env: {
@@ -24,15 +18,16 @@ module.exports = async (
             },
             detached: true,
             stdio: "inherit",
-            windowsHide: false
+            windowsHide: false,
+            shell: process.platform === "win32"
         }
     );
 
     child.once("error", async (error) => {
-        console.error("Restart gagal:", error.message);
+        console.error("Bot restart gagal:", error.message);
 
         try {
-            await reply("Restart gagal dijalankan.");
+            await reply("Bot restart gagal dijalankan.");
         } catch {}
     });
 
@@ -40,10 +35,10 @@ module.exports = async (
         child.unref();
 
         try {
-            await reply("Joybot sedang dimulai ulang...");
+            await reply("Menghentikan bot dan menjalankan ulang...");
         } catch (error) {
             console.error(
-                "Gagal mengirim pesan restart:",
+                "Gagal mengirim pesan botrestart:",
                 error.message
             );
         }
@@ -52,7 +47,7 @@ module.exports = async (
             await Joy.stop?.();
         } catch (error) {
             console.error(
-                "Gagal menutup socket saat restart:",
+                "Gagal menutup socket saat botrestart:",
                 error.message
             );
         }

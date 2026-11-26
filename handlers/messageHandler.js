@@ -616,7 +616,7 @@ async function messageHandler(Joy, m) {
 
         // Owner commands
         case "say":
-        case "restart":
+        case "botrestart":
         case "debug":
         case "ping":
         case "uptime":
