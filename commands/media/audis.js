@@ -1,10 +1,182 @@
 
 const WebP = require("node-webpmux");
 
-const PACK_ID = "com.joybot.stickers";
-const PACK_NAME = "with joy, by hilal";
+// Configuration
 
-const MAX_DURATION = 30;
+const PACK_ID = "com.joybot.stickers";
+const PACK_NAME = "with joy, by @hihilalal_";
+
+const MAX_DURATION = 60;
+
+
+// Dependencies
+
+const pino = require("pino");
+
+const {
+    downloadMediaMessage,
+    normalizeMessageContent
+} = require("baileys");
+
+const {
+    execFile
+} = require("child_process");
+
+const {
+    promisify
+} = require("util");
+
+const fs = require("fs/promises");
+const path = require("path");
+const os = require("os");
+const { isIP } = require("net");
+
+const ffmpegPath = require("ffmpeg-static");
+
+const exec = promisify(execFile);
+
+
+// Error helper
+
+function makeError(message, code) {
+    const error = new Error(message);
+    error.code = code;
+    return error;
+}
+
+
+// Message text extractor
+
+function getMessageText(content) {
+    return (
+        content?.conversation ||
+        content?.extendedTextMessage?.text ||
+        content?.videoMessage?.caption ||
+        content?.imageMessage?.caption ||
+        content?.documentMessage?.caption ||
+        content?.documentWithCaptionMessage
+            ?.message?.documentMessage?.caption ||
+        ""
+    ).trim();
+}
+
+
+// Parse .audis arguments
+
+function parseAudisArguments(text) {
+    const body = String(text || "")
+        .trim()
+        .replace(/^\.audis(?:@\S+)?\s*/i, "")
+        .trim();
+
+    const urlMatch = body.match(
+        /https?:\/\/[^\s<>"']+/i
+    );
+
+    let url = null;
+    let lengthToken = null;
+
+    if (urlMatch) {
+        url = urlMatch[0].replace(/[),.;!?]+$/, "");
+
+        const remaining = body
+            .slice(urlMatch.index + urlMatch[0].length)
+            .trim();
+
+        if (remaining) {
+            lengthToken = remaining.split(/\s+/)[0];
+        }
+
+    } else {
+        const tokens = body.split(/\s+/).filter(Boolean);
+
+        if (tokens.length > 0) {
+            lengthToken = tokens[tokens.length - 1];
+        }
+    }
+
+    return {
+        url,
+        lengthToken
+    };
+}
+
+
+// Basic private IP protection
+
+function isPrivateIp(hostname) {
+    const host = hostname.replace(/^\[|\]$/g, "");
+    const version = isIP(host);
+
+    if (version === 4) {
+        const [a, b] = host.split(".").map(Number);
+
+        return (
+            a === 0 ||
+            a === 10 ||
+            a === 127 ||
+            (a === 169 && b === 254) ||
+            (a === 172 && b >= 16 && b <= 31) ||
+            (a === 192 && b === 168) ||
+            a >= 224
+        );
+    }
+
+    if (version === 6) {
+        return (
+            host === "::" ||
+            host === "::1" ||
+            /^(fc|fd|fe80|ff)/i.test(host) ||
+            host.startsWith("::ffff:127.")
+        );
+    }
+
+    return false;
+}
+
+
+// Validate media URL
+
+function validateMediaUrl(rawUrl) {
+    let parsed;
+
+    try {
+        parsed = new URL(rawUrl);
+    } catch {
+        throw makeError(
+            "Link media tidak valid.",
+            "INVALID_URL"
+        );
+    }
+
+    if (
+        !["http:", "https:"].includes(parsed.protocol) ||
+        parsed.username ||
+        parsed.password
+    ) {
+        throw makeError(
+            "Gunakan link media HTTP atau HTTPS yang valid.",
+            "INVALID_URL"
+        );
+    }
+
+    const hostname = parsed.hostname.toLowerCase();
+
+    if (
+        hostname === "localhost" ||
+        hostname.endsWith(".localhost") ||
+        hostname.endsWith(".local") ||
+        isPrivateIp(hostname)
+    ) {
+        throw makeError(
+            "Alamat media tidak diizinkan.",
+            "INVALID_URL"
+        );
+    }
+
+    return parsed.href;
+}
+
 
 // Sticker metadata
 
@@ -45,38 +217,85 @@ async function addStickerMetadata(webpBuffer) {
 }
 
 
-// Dependencies
+// Download video from URL using yt-dlp
 
-const pino = require("pino");
+async function downloadFromUrl(url, downloadDir) {
+    let youtubedl;
 
-const {
-    downloadMediaMessage,
-    normalizeMessageContent
-} = require("baileys");
+    try {
+        youtubedl = require("youtube-dl-exec");
+    } catch {
+        throw makeError(
+            "Dependency youtube-dl-exec belum terpasang. Jalankan npm install youtube-dl-exec.",
+            "YTDLP_MISSING"
+        );
+    }
 
-const {
-    execFile
-} = require("child_process");
+    try {
+        await youtubedl(url, {
+            output: path.join(
+                downloadDir,
+                "source.%(ext)s"
+            ),
 
-const {
-    promisify
-} = require("util");
+            noPlaylist: true,
+            noProgress: true,
+            noWarnings: true,
+            quiet: true,
+            ignoreConfig: true,
 
-const fs = require("fs/promises");
-const path = require("path");
-const os = require("os");
+            noWriteInfoJson: true,
+            noWriteThumbnail: true,
+            noWriteSubs: true,
 
-const ffmpegPath = require("ffmpeg-static");
+            ffmpegLocation: ffmpegPath
+        });
 
-const exec = promisify(execFile);
+    } catch (error) {
+        const downloadError = makeError(
+            "URL gagal diunduh.",
+            "URL_DOWNLOAD_FAILED"
+        );
 
+        downloadError.stderr = error.stderr;
+        throw downloadError;
+    }
 
-// Error helper
+    const entries = await fs.readdir(
+        downloadDir,
+        { withFileTypes: true }
+    );
 
-function makeError(message, code) {
-    const error = new Error(message);
-    error.code = code;
-    return error;
+    const candidates = entries.filter(entry => {
+        return (
+            entry.isFile() &&
+            entry.name.startsWith("source.") &&
+            !/\.(part|ytdl|json)$/i.test(entry.name)
+        );
+    });
+
+    if (candidates.length === 0) {
+        throw makeError(
+            "Tidak ditemukan video dari link tersebut.",
+            "URL_DOWNLOAD_FAILED"
+        );
+    }
+
+    const downloadedFile = path.join(
+        downloadDir,
+        candidates[0].name
+    );
+
+    const stat = await fs.stat(downloadedFile);
+
+    if (stat.size === 0) {
+        throw makeError(
+            "File hasil download kosong.",
+            "URL_DOWNLOAD_FAILED"
+        );
+    }
+
+    return downloadedFile;
 }
 
 
@@ -105,13 +324,14 @@ module.exports = async (Joy, msg, reply) => {
         }
     };
 
+
     try {
 
         // Check FFmpeg
 
         if (!ffmpegPath) {
             throw new Error(
-                "FFmpeg tidak ditemukan. Jalankan: npm install ffmpeg-static"
+                "FFmpeg tidak ditemukan."
             );
         }
 
@@ -119,9 +339,10 @@ module.exports = async (Joy, msg, reply) => {
 
         if (typeof Joy.sendSoundSticker !== "function") {
             throw new Error(
-                "Fitur Sound Sticker belum terpasang di index.js."
+                "Sound Sticker belum terpasang di index.js."
             );
         }
+
 
         // Normalize current message
 
@@ -129,9 +350,62 @@ module.exports = async (Joy, msg, reply) => {
             normalizeMessageContent(msg.message) ||
             msg.message;
 
+        // Parse command arguments
+
+        const rawText =
+            getMessageText(currentContent) ||
+            msg.text ||
+            msg.body ||
+            "";
+
+        const args = parseAudisArguments(rawText);
+
+
+        // Set default duration
+
+        let requestedDuration = MAX_DURATION;
+
+        if (args.lengthToken !== null) {
+
+            if (!/^\d+$/.test(args.lengthToken)) {
+                return reply(
+                    "Length harus berupa angka bulat dalam satuan detik."
+                );
+            }
+
+            requestedDuration = Number(
+                args.lengthToken
+            );
+
+            // Maximum duration validation
+
+            if (requestedDuration > MAX_DURATION) {
+                return reply(
+                    `Maksimal durasi Sound Sticker adalah ${MAX_DURATION} detik.`
+                );
+            }
+
+            if (requestedDuration < 1) {
+                return reply(
+                    "Minimal durasi Sound Sticker adalah 1 detik."
+                );
+            }
+        }
+
+
+        // Validate URL if provided
+
+        const mediaUrl = args.url
+            ? validateMediaUrl(args.url)
+            : null;
+
+
+        // Get current or quoted video
+
         const context =
             currentContent.extendedTextMessage?.contextInfo ||
-            msg.message.extendedTextMessage?.contextInfo;
+            currentContent.imageMessage?.contextInfo ||
+            currentContent.videoMessage?.contextInfo;
 
         let targetMessage = {
             ...msg,
@@ -145,8 +419,9 @@ module.exports = async (Joy, msg, reply) => {
 
         if (!videoMessage && context?.quotedMessage) {
             const quotedContent =
-                normalizeMessageContent(context.quotedMessage) ||
-                context.quotedMessage;
+                normalizeMessageContent(
+                    context.quotedMessage
+                ) || context.quotedMessage;
 
             videoMessage = quotedContent.videoMessage;
 
@@ -162,15 +437,23 @@ module.exports = async (Joy, msg, reply) => {
             }
         }
 
-        // Check video
 
-        if (!videoMessage) {
+        // Check input source
+
+        if (!mediaUrl && !videoMessage) {
             return reply(
-                "Kirim video atau balas video dengan command .audis"
+                "Kirim video, balas video dengan .audis, atau gunakan:\n\n" +
+                ".audis <link> [length]\n\n" +
+                "Contoh:\n" +
+                ".audis https://tiktok.com/... 15\n" +
+                ".audis https://tiktok.com/...\n\n" +
+                "Length default: 60 detik."
             );
         }
 
+
         await react("⏳");
+
 
         // Create temporary directory
 
@@ -178,12 +461,60 @@ module.exports = async (Joy, msg, reply) => {
             path.join(os.tmpdir(), "joy-audis-")
         );
 
-        // File paths
 
-        const input = path.join(
-            tempDir,
-            "input.mp4"
-        );
+        // Input path
+
+        let input;
+
+
+        // MODE 1: Download from URL
+
+        if (mediaUrl) {
+
+            const downloadDir = path.join(
+                tempDir,
+                "download"
+            );
+
+            await fs.mkdir(downloadDir, {
+                recursive: true
+            });
+
+            input = await downloadFromUrl(
+                mediaUrl,
+                downloadDir
+            );
+
+        }
+
+
+        // MODE 2: Download WhatsApp media
+
+        else {
+
+            const buffer = await downloadMediaMessage(
+                targetMessage,
+                "buffer",
+                {},
+                {
+                    logger: pino({
+                        level: "silent"
+                    }),
+
+                    reuploadRequest: Joy.updateMediaMessage
+                }
+            );
+
+            input = path.join(
+                tempDir,
+                "input.mp4"
+            );
+
+            await fs.writeFile(input, buffer);
+        }
+
+
+        // Output paths
 
         const trimmed = path.join(
             tempDir,
@@ -200,30 +531,14 @@ module.exports = async (Joy, msg, reply) => {
             "audio.ogg"
         );
 
-        // Download original video
 
-        const buffer = await downloadMediaMessage(
-            targetMessage,
-            "buffer",
-            {},
-            {
-                logger: pino({
-                    level: "silent"
-                }),
-                reuploadRequest: Joy.updateMediaMessage
-            }
-        );
-
-        await fs.writeFile(input, buffer);
-
-
-        // STEP 1: Trim video to maximum 30 seconds
+        // STEP 1: Trim video to requested duration
 
         await exec(ffmpegPath, [
             "-y",
             "-i", input,
 
-            "-t", String(MAX_DURATION),
+            "-t", String(requestedDuration),
 
             "-map", "0:v:0",
             "-map", "0:a:0?",
@@ -241,8 +556,8 @@ module.exports = async (Joy, msg, reply) => {
             trimmed
         ]);
 
-        
-        // STEP 2: Extract audio from trimmed video
+
+        // STEP 2: Extract audio
 
         try {
             await exec(ffmpegPath, [
@@ -252,7 +567,7 @@ module.exports = async (Joy, msg, reply) => {
                 "-map", "0:a:0",
                 "-vn",
 
-                "-t", String(MAX_DURATION),
+                "-t", String(requestedDuration),
 
                 "-c:a", "libopus",
                 "-b:a", "48k",
@@ -288,13 +603,13 @@ module.exports = async (Joy, msg, reply) => {
         }
 
 
-        // STEP 3: Convert trimmed video to animated WebP
+        // STEP 3: Convert video to animated WebP
 
         await exec(ffmpegPath, [
             "-y",
             "-i", trimmed,
 
-            "-t", String(MAX_DURATION),
+            "-t", String(requestedDuration),
 
             "-an",
 
@@ -327,7 +642,7 @@ module.exports = async (Joy, msg, reply) => {
         }
 
 
-        // STEP 5: Add sticker metadata
+        // STEP 5: Add metadata
 
         const stickerBuffer = await addStickerMetadata(
             rawStickerBuffer
@@ -367,12 +682,30 @@ module.exports = async (Joy, msg, reply) => {
 
         await react("❌");
 
-        if (error.code === "NO_AUDIO_TRACK") {
-            await reply(error.message);
-        } else {
-            await reply(
-                "Gagal membuat Sound Sticker."
-            );
+        switch (error.code) {
+
+            case "NO_AUDIO_TRACK":
+                await reply(error.message);
+                break;
+
+            case "YTDLP_MISSING":
+                await reply(error.message);
+                break;
+
+            case "INVALID_URL":
+                await reply(error.message);
+                break;
+
+            case "URL_DOWNLOAD_FAILED":
+                await reply(
+                    "Gagal mengunduh media dari link tersebut. Pastikan link dapat diakses dan situsnya didukung."
+                );
+                break;
+
+            default:
+                await reply(
+                    "Gagal membuat Sound Sticker."
+                );
         }
 
     } finally {
@@ -383,7 +716,7 @@ module.exports = async (Joy, msg, reply) => {
             await fs.rm(tempDir, {
                 recursive: true,
                 force: true
-            }).catch((error) => {
+            }).catch(error => {
                 console.error(
                     "Temp cleanup error:",
                     error.message
