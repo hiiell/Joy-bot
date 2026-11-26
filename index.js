@@ -55,6 +55,8 @@ let reconnectAttempts = 0;
 let connecting = false;
 let shuttingDown = false;
 let instanceLockPath = null;
+let cachedWaVersion = null;
+let cachedWaIsLatest = false;
 
 // Dipakai untuk menjawab retry request WhatsApp (getMessage).
 // Hanya isi pesan terakhir yang disimpan, bukan kredensial.
@@ -823,23 +825,27 @@ async function connectToWhatsApp() {
     } = await useMultiFileAuthState(AUTH_DIR);
 
 
-    let version;
-    let isLatest = false;
+    let version = cachedWaVersion;
+    let isLatest = cachedWaIsLatest;
 
-    try {
-      const latest = await fetchLatestBaileysVersion();
+    if (!version) {
+      try {
+        const latest = await fetchLatestBaileysVersion();
 
-      version = latest.version;
-      isLatest = latest.isLatest;
+        version = latest.version;
+        isLatest = latest.isLatest;
+        cachedWaVersion = version;
+        cachedWaIsLatest = isLatest;
 
-      console.log(
-        `Using WhatsApp V${version.join(".")}, isLatest: ${isLatest}`
-      );
-    } catch (error) {
-      console.warn(
-        "Gagal mengambil versi WhatsApp terbaru, memakai versi default Baileys:",
-        error.message
-      );
+        console.log(
+          `Using WhatsApp V${version.join(".")}, isLatest: ${isLatest}`
+        );
+      } catch (error) {
+        console.warn(
+          "Gagal mengambil versi WhatsApp terbaru, memakai versi default Baileys:",
+          error.message
+        );
+      }
     }
 
 
@@ -863,7 +869,7 @@ async function connectToWhatsApp() {
       ],
 
       syncFullHistory:
-        true,
+        false,
 
       generateHighQualityLinkPreview:
         true,
