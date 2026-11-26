@@ -35,3 +35,6 @@ folder-tree.txt
 Thumbs.db
 Desktop.ini
 .vscode/
+
+# Local AI progress memory
+.joybot-memory.md
