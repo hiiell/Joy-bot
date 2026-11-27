@@ -472,27 +472,27 @@ async function createAudisMedia(
 
     if (sourceStat.size <= SOURCE_SIZE_THRESHOLD && stickerDuration <= 5) {
         attempts = [
+            { scale: SMALL_SOURCE_SCALE, fps: 24, quality: 50 },
             { scale: SMALL_SOURCE_SCALE, fps: 20, quality: 36 },
             { scale: LARGE_SOURCE_SCALE, fps: 18, quality: 28 },
             { scale: 256, fps: 15, quality: 22 },
-            { scale: 224, fps: 12, quality: 16 },
-            { scale: 192, fps: 10, quality: 10 }
+            { scale: 224, fps: 12, quality: 16 }
         ];
     } else if (stickerDuration <= 15) {
         attempts = [
-            { scale: LARGE_SOURCE_SCALE, fps: 18, quality: 30 },
+            { scale: SMALL_SOURCE_SCALE, fps: 18, quality: 40 },
+            { scale: LARGE_SOURCE_SCALE, fps: 15, quality: 30 },
             { scale: 256, fps: 15, quality: 24 },
             { scale: 224, fps: 12, quality: 18 },
-            { scale: 192, fps: 10, quality: 12 },
-            { scale: 160, fps: 10, quality: 8 }
+            { scale: 192, fps: 10, quality: 12 }
         ];
     } else {
         attempts = [
-            { scale: 224, fps: 12, quality: 16 },
-            { scale: 192, fps: 10, quality: 12 },
-            { scale: 160, fps: 10, quality: 8 },
-            { scale: 160, fps: 8, quality: 6 },
-            { scale: 128, fps: 8, quality: 6 }
+            { scale: LARGE_SOURCE_SCALE, fps: 12, quality: 24 },
+            { scale: 256, fps: 10, quality: 18 },
+            { scale: 224, fps: 10, quality: 14 },
+            { scale: 192, fps: 8, quality: 10 },
+            { scale: 160, fps: 8, quality: 8 }
         ];
     }
 
