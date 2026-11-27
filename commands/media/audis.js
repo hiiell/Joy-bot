@@ -7,8 +7,8 @@ const WebP = require("node-webpmux");
 const PACK_ID = "com.joybot.stickers";
 const PACK_NAME = "with joy, by @hihilalal_";
 
-const MAX_DURATION = 60;
-const MAX_STICKER_DURATION = 10;
+const MAX_DURATION = 30;
+const MAX_STICKER_DURATION = 30;
 const MAX_WEBP_SIZE = 490 * 1024;
 const MAX_DOWNLOAD_SIZE = 80 * 1024 * 1024;
 
@@ -17,7 +17,7 @@ const SOURCE_SIZE_THRESHOLD = 5 * 1024 * 1024;
 const SMALL_SOURCE_SCALE = 512;
 const LARGE_SOURCE_SCALE = 320;
 const WEBP_COMPRESSION_LEVEL = 3;
-const FFMPEG_TIMEOUT_MS = 90000;
+const FFMPEG_TIMEOUT_MS = 120000;
 
 const TIKTOK_API =
     "https://ikhlasapi.web.id/api/downloader/tiktok-v2";
@@ -468,25 +468,33 @@ async function createAudisMedia(
 
     const sourceStat = await fs.stat(input);
 
-    const useLargeScaleStart =
-        sourceStat.size <= SOURCE_SIZE_THRESHOLD &&
-        stickerDuration <= 5;
+    let attempts;
 
-    const attempts = useLargeScaleStart
-        ? [
+    if (sourceStat.size <= SOURCE_SIZE_THRESHOLD && stickerDuration <= 5) {
+        attempts = [
             { scale: SMALL_SOURCE_SCALE, fps: 20, quality: 36 },
             { scale: LARGE_SOURCE_SCALE, fps: 18, quality: 28 },
             { scale: 256, fps: 15, quality: 22 },
             { scale: 224, fps: 12, quality: 16 },
             { scale: 192, fps: 10, quality: 10 }
-        ]
-        : [
+        ];
+    } else if (stickerDuration <= 15) {
+        attempts = [
             { scale: LARGE_SOURCE_SCALE, fps: 18, quality: 30 },
             { scale: 256, fps: 15, quality: 24 },
             { scale: 224, fps: 12, quality: 18 },
             { scale: 192, fps: 10, quality: 12 },
             { scale: 160, fps: 10, quality: 8 }
         ];
+    } else {
+        attempts = [
+            { scale: 224, fps: 12, quality: 16 },
+            { scale: 192, fps: 10, quality: 12 },
+            { scale: 160, fps: 10, quality: 8 },
+            { scale: 160, fps: 8, quality: 6 },
+            { scale: 128, fps: 8, quality: 6 }
+        ];
+    }
 
     const firstAttempt = attempts[0];
 
