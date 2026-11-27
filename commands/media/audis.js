@@ -16,7 +16,8 @@ const MAX_DOWNLOAD_SIZE = 80 * 1024 * 1024;
 const SOURCE_SIZE_THRESHOLD = 5 * 1024 * 1024;
 const SMALL_SOURCE_SCALE = 512;
 const LARGE_SOURCE_SCALE = 320;
-const WEBP_COMPRESSION_LEVEL = 6;
+const WEBP_COMPRESSION_LEVEL = 3;
+const FFMPEG_TIMEOUT_MS = 90000;
 
 const TIKTOK_API =
     "https://ikhlasapi.web.id/api/downloader/tiktok-v2";
@@ -62,7 +63,8 @@ async function runFFmpeg(args) {
         ...args
     ], {
         windowsHide: true,
-        maxBuffer: 10 * 1024 * 1024
+        maxBuffer: 10 * 1024 * 1024,
+        timeout: FFMPEG_TIMEOUT_MS
     });
 }
 
@@ -200,9 +202,10 @@ function findVideoUrl(data) {
 
             let score = 0;
 
-            if (/nowm|no.?watermark|hdplay/.test(key)) score += 10;
+            if (/nowm|no.?watermark/.test(key)) score += 10;
             if (/video/.test(key)) score += 8;
-            if (/play/.test(key)) score += 5;
+            if (/play/.test(key)) score += 6;
+            if (/hdplay|hd_play/.test(key)) score -= 2;
             if (/download/.test(key)) score += 3;
             if (/\.mp4(?:[?#]|$)/i.test(value)) score += 4;
 
@@ -406,9 +409,39 @@ async function addStickerMetadata(webpBuffer) {
 function buildWebPFilter(scale) {
     return [
         `scale=${scale}:${scale}:force_original_aspect_ratio=decrease:force_divisible_by=2`,
-        "format=rgba",
+        "format=yuv420p",
         "setsar=1"
     ].join(",");
+}
+
+
+function buildWebPOutputArgs(scale, quality, stickerDuration, videoPath) {
+    return [
+        "-map", "0:v:0",
+        "-an",
+        "-t", String(stickerDuration),
+        "-vf", buildWebPFilter(scale),
+        "-fps_mode:v", "passthrough",
+        "-c:v", "libwebp",
+        "-lossless", "0",
+        "-compression_level", String(WEBP_COMPRESSION_LEVEL),
+        "-quality", String(quality),
+        "-loop", "0",
+        videoPath
+    ];
+}
+
+
+async function tryBuildStickerBuffer(videoPath) {
+    const rawBuffer = await fs.readFile(videoPath);
+
+    if (rawBuffer.length > MAX_WEBP_SIZE) {
+        return null;
+    }
+
+    const stickerBuffer = await addStickerMetadata(rawBuffer);
+
+    return stickerBuffer.length <= MAX_WEBP_SIZE ? stickerBuffer : null;
 }
 
 
@@ -430,18 +463,29 @@ async function createAudisMedia(
 
     const sourceStat = await fs.stat(input);
 
-    const outputScale = sourceStat.size > SOURCE_SIZE_THRESHOLD
-        ? LARGE_SOURCE_SCALE
-        : SMALL_SOURCE_SCALE;
+    const useLargeScaleStart =
+        sourceStat.size <= SOURCE_SIZE_THRESHOLD &&
+        stickerDuration <= 5;
 
-    const qualityProfiles = [40, 34, 28, 24, 20, 16, 12, 9, 6];
+    const attempts = useLargeScaleStart
+        ? [
+            { scale: SMALL_SOURCE_SCALE, quality: 36 },
+            { scale: LARGE_SOURCE_SCALE, quality: 28 },
+            { scale: 256, quality: 18 },
+            { scale: 192, quality: 10 }
+        ]
+        : [
+            { scale: LARGE_SOURCE_SCALE, quality: 32 },
+            { scale: 256, quality: 20 },
+            { scale: 224, quality: 12 },
+            { scale: 192, quality: 8 }
+        ];
 
-    const firstQuality = qualityProfiles[0];
-    const webpFilter = buildWebPFilter(outputScale);
+    const firstAttempt = attempts[0];
 
     console.log(
         `[AUDIS] Source ${(sourceStat.size / 1024 / 1024).toFixed(2)} MB; ` +
-        `output ${outputScale}px; FPS preserved; target ${Math.round(MAX_WEBP_SIZE / 1024)} KB`
+        `start ${firstAttempt.scale}px q${firstAttempt.quality}; FPS preserved; target ${Math.round(MAX_WEBP_SIZE / 1024)} KB`
     );
 
     // FIRST PASS: audio + WebP
@@ -466,17 +510,12 @@ async function createAudisMedia(
             audioPath,
 
             // Output 2: animated WebP
-            "-map", "0:v:0",
-            "-an",
-            "-t", String(stickerDuration),
-            "-vf", webpFilter,
-            "-fps_mode:v", "passthrough",
-            "-c:v", "libwebp",
-            "-lossless", "0",
-            "-compression_level", String(WEBP_COMPRESSION_LEVEL),
-            "-quality", String(firstQuality),
-            "-loop", "0",
-            videoPath
+            ...buildWebPOutputArgs(
+                firstAttempt.scale,
+                firstAttempt.quality,
+                stickerDuration,
+                videoPath
+            )
         ]);
     } catch (error) {
         const stderr = String(error.stderr || error.message || "");
@@ -492,39 +531,32 @@ async function createAudisMedia(
 
     await onProgress(4);
 
-    let rawBuffer = await fs.readFile(videoPath);
-    let stickerBuffer = await addStickerMetadata(rawBuffer);
+    let stickerBuffer = await tryBuildStickerBuffer(videoPath);
 
-    if (stickerBuffer.length <= MAX_WEBP_SIZE) {
+    if (stickerBuffer) {
         await onProgress(3);
         return { audioPath, stickerBuffer };
     }
 
-    // Re-encode WebP only
+    // Re-encode WebP only with lower scale/quality
 
-    for (let i = 1; i < qualityProfiles.length; i++) {
-        const quality = qualityProfiles[i];
+    for (let i = 1; i < attempts.length; i++) {
+        const { scale, quality } = attempts[i];
 
         await runFFmpeg([
             "-y",
             "-i", input,
-            "-map", "0:v:0",
-            "-an",
-            "-t", String(stickerDuration),
-            "-vf", webpFilter,
-            "-fps_mode:v", "passthrough",
-            "-c:v", "libwebp",
-            "-lossless", "0",
-            "-compression_level", String(WEBP_COMPRESSION_LEVEL),
-            "-quality", String(quality),
-            "-loop", "0",
-            videoPath
+            ...buildWebPOutputArgs(
+                scale,
+                quality,
+                stickerDuration,
+                videoPath
+            )
         ]);
 
-        rawBuffer = await fs.readFile(videoPath);
-        stickerBuffer = await addStickerMetadata(rawBuffer);
+        stickerBuffer = await tryBuildStickerBuffer(videoPath);
 
-        if (stickerBuffer.length <= MAX_WEBP_SIZE) {
+        if (stickerBuffer) {
             await onProgress(3);
             return { audioPath, stickerBuffer };
         }
