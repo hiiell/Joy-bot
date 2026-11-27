@@ -9,7 +9,7 @@ const PACK_NAME = "with joy, by @hihilalal_";
 
 const MAX_DURATION = 30;
 const MAX_STICKER_DURATION = 30;
-const MAX_WEBP_SIZE = 490 * 1024;
+const MAX_WEBP_SIZE = 999 * 1024;
 const MAX_DOWNLOAD_SIZE = 80 * 1024 * 1024;
 
 // Adaptive resolution
