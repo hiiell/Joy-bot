@@ -9,7 +9,7 @@ const PACK_NAME = "with joy, by @hihilalal_";
 
 const MAX_DURATION = 60;
 const MAX_STICKER_DURATION = 10;
-const MAX_WEBP_SIZE = 480 * 1024;
+const MAX_WEBP_SIZE = 490 * 1024;
 const MAX_DOWNLOAD_SIZE = 80 * 1024 * 1024;
 
 // Adaptive resolution
@@ -406,8 +406,9 @@ async function addStickerMetadata(webpBuffer) {
 
 // Build WebP filter
 
-function buildWebPFilter(scale) {
+function buildWebPFilter(scale, fps) {
     return [
+        `fps=${fps}`,
         `scale=${scale}:${scale}:force_original_aspect_ratio=decrease:force_divisible_by=2`,
         "format=yuv420p",
         "setsar=1"
@@ -415,13 +416,12 @@ function buildWebPFilter(scale) {
 }
 
 
-function buildWebPOutputArgs(scale, quality, stickerDuration, videoPath) {
+function buildWebPOutputArgs(scale, fps, quality, stickerDuration, videoPath) {
     return [
         "-map", "0:v:0",
         "-an",
         "-t", String(stickerDuration),
-        "-vf", buildWebPFilter(scale),
-        "-fps_mode:v", "passthrough",
+        "-vf", buildWebPFilter(scale, fps),
         "-c:v", "libwebp",
         "-lossless", "0",
         "-compression_level", String(WEBP_COMPRESSION_LEVEL),
@@ -432,8 +432,13 @@ function buildWebPOutputArgs(scale, quality, stickerDuration, videoPath) {
 }
 
 
-async function tryBuildStickerBuffer(videoPath) {
+async function tryBuildStickerBuffer(videoPath, attempt) {
     const rawBuffer = await fs.readFile(videoPath);
+
+    console.log(
+        `[AUDIS] Attempt ${attempt.scale}px ${attempt.fps}fps q${attempt.quality} -> ` +
+        `${(rawBuffer.length / 1024).toFixed(1)} KB`
+    );
 
     if (rawBuffer.length > MAX_WEBP_SIZE) {
         return null;
@@ -469,23 +474,26 @@ async function createAudisMedia(
 
     const attempts = useLargeScaleStart
         ? [
-            { scale: SMALL_SOURCE_SCALE, quality: 36 },
-            { scale: LARGE_SOURCE_SCALE, quality: 28 },
-            { scale: 256, quality: 18 },
-            { scale: 192, quality: 10 }
+            { scale: SMALL_SOURCE_SCALE, fps: 20, quality: 36 },
+            { scale: LARGE_SOURCE_SCALE, fps: 18, quality: 28 },
+            { scale: 256, fps: 15, quality: 22 },
+            { scale: 224, fps: 12, quality: 16 },
+            { scale: 192, fps: 10, quality: 10 }
         ]
         : [
-            { scale: LARGE_SOURCE_SCALE, quality: 32 },
-            { scale: 256, quality: 20 },
-            { scale: 224, quality: 12 },
-            { scale: 192, quality: 8 }
+            { scale: LARGE_SOURCE_SCALE, fps: 18, quality: 30 },
+            { scale: 256, fps: 15, quality: 24 },
+            { scale: 224, fps: 12, quality: 18 },
+            { scale: 192, fps: 10, quality: 12 },
+            { scale: 160, fps: 10, quality: 8 }
         ];
 
     const firstAttempt = attempts[0];
 
     console.log(
         `[AUDIS] Source ${(sourceStat.size / 1024 / 1024).toFixed(2)} MB; ` +
-        `start ${firstAttempt.scale}px q${firstAttempt.quality}; FPS preserved; target ${Math.round(MAX_WEBP_SIZE / 1024)} KB`
+        `start ${firstAttempt.scale}px ${firstAttempt.fps}fps q${firstAttempt.quality}; ` +
+        `target ${Math.round(MAX_WEBP_SIZE / 1024)} KB`
     );
 
     // FIRST PASS: audio + WebP
@@ -512,6 +520,7 @@ async function createAudisMedia(
             // Output 2: animated WebP
             ...buildWebPOutputArgs(
                 firstAttempt.scale,
+                firstAttempt.fps,
                 firstAttempt.quality,
                 stickerDuration,
                 videoPath
@@ -531,30 +540,31 @@ async function createAudisMedia(
 
     await onProgress(4);
 
-    let stickerBuffer = await tryBuildStickerBuffer(videoPath);
+    let stickerBuffer = await tryBuildStickerBuffer(videoPath, firstAttempt);
 
     if (stickerBuffer) {
         await onProgress(3);
         return { audioPath, stickerBuffer };
     }
 
-    // Re-encode WebP only with lower scale/quality
+    // Re-encode WebP only with lower scale/fps/quality
 
     for (let i = 1; i < attempts.length; i++) {
-        const { scale, quality } = attempts[i];
+        const attempt = attempts[i];
 
         await runFFmpeg([
             "-y",
             "-i", input,
             ...buildWebPOutputArgs(
-                scale,
-                quality,
+                attempt.scale,
+                attempt.fps,
+                attempt.quality,
                 stickerDuration,
                 videoPath
             )
         ]);
 
-        stickerBuffer = await tryBuildStickerBuffer(videoPath);
+        stickerBuffer = await tryBuildStickerBuffer(videoPath, attempt);
 
         if (stickerBuffer) {
             await onProgress(3);
